@@ -5,6 +5,10 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "LevelUpdateNeighborsMixin",
-    "ServerLevelUpdateNeighborsMixin"
-  ]
+    "ServerLevelUpdateNeighborsMixin",
+    "LevelNeighborChangedMixin"
+  ],
+  "injectors": {
+    "maxShiftBy": 0
+  }
 }
