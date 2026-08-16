@@ -1,0 +1,23 @@
+# Build outputs
+bin/
+obj/
+dist/
+publish/
+
+# GUI local
+gui/**/.vs/
+gui/**/bin/
+gui/**/obj/
+
+# Local test server (keep committed configs, ignore runtime data)
+dev-server/run/
+*.log
+
+# IDE
+.vs/
+.idea/
+*.user
+
+# OS
+Thumbs.db
+.DS_Store
