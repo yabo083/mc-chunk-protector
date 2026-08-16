@@ -8,6 +8,7 @@ namespace McChunkProtector.Gui;
 public partial class MainWindow : Window
 {
     private readonly RegionConfigStore _store;
+    private readonly AppSettings _settings;
     private RegionConfig _config = new();
     private readonly MapViewport _viewport = new();
     private MapRenderer? _renderer;
@@ -23,9 +24,12 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
+        _settings = AppSettings.Load();
         var configPath = ResolveConfigPath();
         _store = new RegionConfigStore(configPath);
         StatusText.Text = $"配置: {configPath}";
+
+        KeyDown += OnWindowKeyDown;
 
         Loaded += (_, _) =>
         {
@@ -39,20 +43,57 @@ public partial class MainWindow : Window
         };
     }
 
+    // ---------------- 键盘手势：WASD 平移 · +/- 缩放 ----------------
+    private void OnWindowKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_renderer is null) return;
+        const double panPx = 60.0;
+        const double zoomStep = 0.5;
+        switch (e.Key)
+        {
+            case Key.W: _viewport.Pan(0, -panPx); break;
+            case Key.S: _viewport.Pan(0, panPx); break;
+            case Key.A: _viewport.Pan(-panPx, 0); break;
+            case Key.D: _viewport.Pan(panPx, 0); break;
+            case Key.OemPlus:
+            case Key.Add:
+                ZoomCentered(zoomStep);
+                break;
+            case Key.OemMinus:
+            case Key.Subtract:
+                ZoomCentered(-zoomStep);
+                break;
+            default:
+                return;
+        }
+
+        e.Handled = true;
+        ForceRedraw();
+    }
+
+    private void ZoomCentered(double step)
+    {
+        var size = new System.Windows.Size(MapHost.ActualWidth, MapHost.ActualHeight);
+        var (wx, wz) = _viewport.PixelToWorld(size.Width / 2, size.Height / 2, size);
+        _viewport.ZoomAt(wx, wz, step);
+    }
+
     private string ResolveConfigPath()
     {
-        // 优先定位工程/部署约定的 kubejs/config/regions.json
+        if (!string.IsNullOrEmpty(_settings.RegionConfigPath) && File.Exists(_settings.RegionConfigPath))
+            return _settings.RegionConfigPath!;
+
         var candidates = new[]
         {
             Path.Combine(AppContext.BaseDirectory, "kubejs", "config", "regions.json"),
-            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "kubejs-scripts", "..", "config-schema", "regions.example.json"),
+            Path.Combine(AppContext.BaseDirectory, "config", "regions.json"),
+            Path.Combine(Environment.CurrentDirectory, "kubejs", "config", "regions.json"),
         };
 
         foreach (var c in candidates)
         {
-            var dir = Path.GetDirectoryName(c)!;
-            if (Directory.Exists(Path.GetDirectoryName(dir) ?? dir))
-                return c;
+            var dir = Path.GetDirectoryName(c);
+            if (dir != null && Directory.Exists(dir)) return c;
         }
 
         return candidates[0];
@@ -62,21 +103,45 @@ public partial class MainWindow : Window
     {
         _config = _store.Load();
 
-        // 尝试定位 Xaero 数据目录（主世界 null 或 DIM 目录下的 mw$-*）
-        var globals = new[]
-        {
-            @"E:\SteamLibrary\steamapps\common\PCL2\.minecraft\versions\Mechanomania\xaero\world-map".Replace('\\', Path.DirectorySeparatorChar),
-        };
-
-        var foundDir = FindFirstTileDir(globals);
+        // 定位 Xaero 数据集目录（world-map 下某个 <server>/<dim>/mw-* 内含 zip）
+        var foundDir = ResolveXaeroTileDir();
         _exploration = new ExplorationIndex(foundDir ?? "");
         if (_exploration.DirectoryFound)
         {
-            StatusText.Text += $"  · 探索数据: {Path.GetFileName(Path.GetDirectoryName(foundDir!))}";
+            StatusText.Text += $"  · 探索数据: {Path.GetFileName(Path.GetDirectoryName(foundDir!))} [{_exploration.ExploredRegionCount} regions]";
         }
 
         RefreshRegionList();
         ForceRedraw();
+    }
+
+    private string? ResolveXaeroTileDir()
+    {
+        // 用户设置优先
+        if (!string.IsNullOrEmpty(_settings.XaeroWorldMapDir))
+        {
+            var f = FindFirstTileDir(new[] { _settings.XaeroWorldMapDir! });
+            if (f != null) return f;
+        }
+
+        // 自动：常见位置探测
+        var roots = new List<string>();
+        if (!string.IsNullOrEmpty(_settings.XaeroWorldMapDir)) roots.Add(_settings.XaeroWorldMapDir!);
+
+        foreach (var drive in new[] { "C", "D", "E" })
+        {
+            var p = Path.Combine($@"{drive}:\SteamLibrary\steamapps\common\PCL2\.minecraft", "versions");
+            if (Directory.Exists(p))
+            {
+                foreach (var ver in Directory.EnumerateDirectories(p))
+                {
+                    var wm = Path.Combine(ver, "xaero", "world-map");
+                    if (Directory.Exists(wm)) roots.Add(wm);
+                }
+            }
+        }
+
+        return FindFirstTileDir(roots.ToArray());
     }
 
     private static string? FindFirstTileDir(string[] roots)
@@ -298,7 +363,26 @@ public partial class MainWindow : Window
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         _store.Save(_config);
+        _settings.RegionConfigPath = _store.ConfigPath;
+        _settings.Save();
         StatusText.Text = $"已保存 -> {_store.ConfigPath}";
+    }
+
+    private void OpenConfig_Click(object sender, RoutedEventArgs e)
+    {
+        var ofd = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "选择 regions.json",
+            Filter = "JSON 配置文件 (*.json)|*.json",
+        };
+        if (ofd.ShowDialog() == true)
+        {
+            _settings.RegionConfigPath = ofd.FileName;
+            _settings.Save();
+            _store.ReloadPath(ofd.FileName);
+            LoadEverything();
+            StatusText.Text = $"配置: {ofd.FileName}";
+        }
     }
 
     private void Reload_Click(object sender, RoutedEventArgs e)

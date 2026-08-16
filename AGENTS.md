@@ -42,12 +42,13 @@ dotnet publish gui -c Release -r win-x64 --self-contained /p:PublishSingleFile=t
 ## 完成状态
 
 - [x] 仓库骨架 / git init
-- [x] KubeJS 拦截方案 API 调研（NativeEvents / JsonIO，本地 server 实测确认）
-- [x] Xaero 地图格式调研
-- [x] KubeJS 脚本实现（`kubejs-scripts/ChunkProtector.js`，单文件）
-- [x] 本地 NeoForge server 验证脚本无报错 + 逻辑正确（selfCheck 断言通过）
-- [ ] WPF GUI 收尾（地图渲染 + 手势 + 配置同步）
-- [ ] 文档收官与部署包
+- [x] KubeJS 拦截方案 API 调研 + 本地 server 实测确认
+- [x] Xaero 地图格式调研 + ADR-0001
+- [x] KubeJS 脚本 `kubejs-scripts/ChunkProtector.js`（单文件，NativeEvents + JsonIO 热重载）
+- [x] 本地 NeoForge server 验证：0 error 加载 + selfCheck 命中断言通过
+- [x] WPF GUI：地图视口/探索网格/选区渲染 + 鼠标(平移/缩放/Ctrl框选)+键盘(WASD/±)手势 + 配置读写/热重载
+- [x] 文档：01-context / 02-goals / 03-building-blocks / ADR-0001 / runbooks / data/schema
+- [ ] 打包发布（`dotnet publish` 生成可部署 exe）+ 部署 zip
 
 （此清单会随进度更新，不做重复粘贴。）
 

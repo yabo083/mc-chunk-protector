@@ -15,6 +15,7 @@
                 <TextBlock Text="MC Chunk Protector" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,16,0" />
                 <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="Gray" Text="未加载配置" />
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="OpenConfigBtn" Content="选择配置…" Padding="10,2" Margin="0,0,8,0" Click="OpenConfig_Click" />
                     <Button x:Name="ReloadBtn" Content="刷新" Padding="10,2" Margin="0,0,8,0" Click="Reload_Click" />
                     <Button x:Name="SaveBtn" Content="保存配置" Padding="10,2" FontWeight="SemiBold" Click="Save_Click" />
                 </StackPanel>

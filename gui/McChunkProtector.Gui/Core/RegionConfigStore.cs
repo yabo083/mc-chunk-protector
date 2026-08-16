@@ -15,12 +15,15 @@ public sealed class RegionConfigStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public string ConfigPath { get; }
+    public string ConfigPath { get; private set; }
 
     public RegionConfigStore(string configPath)
     {
         ConfigPath = configPath;
     }
+
+    /// <summary>切换配置文件（GUI 用户手动选择时用）。</summary>
+    public void ReloadPath(string newPath) => ConfigPath = newPath;
 
     /// <summary>读取配置；文件不存在时返回空的合法配置。</summary>
     public RegionConfig Load()

@@ -3,6 +3,8 @@ bin/
 obj/
 dist/
 publish/
+tools/**/bin/
+tools/**/obj/
 
 # GUI local
 gui/**/.vs/
