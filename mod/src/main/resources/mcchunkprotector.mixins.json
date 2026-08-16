@@ -6,7 +6,8 @@
   "mixins": [
     "LevelUpdateNeighborsMixin",
     "ServerLevelUpdateNeighborsMixin",
-    "LevelNeighborChangedMixin"
+    "LevelNeighborChangedMixin",
+    "FenceBlockPlacementMixin"
   ],
   "injectors": {
     "maxShiftBy": 0
