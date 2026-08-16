@@ -45,8 +45,9 @@ dotnet publish gui -c Release -r win-x64 --self-contained /p:PublishSingleFile=t
 - [x] KubeJS 拦截方案 API 调研 + 本地 server 实测确认
 - [x] Xaero 地图格式调研 + ADR-0001
 - [x] KubeJS 脚本 `kubejs-scripts/ChunkProtector.js`（单文件，NativeEvents + JsonIO 热重载）
-- [x] 本地 NeoForge server 验证：0 error 加载 + selfCheck 命中断言通过
-- [x] WPF GUI：地图视口/探索网格/选区渲染 + 鼠标(平移/缩放/Ctrl框选)+键盘(WASD/±)手势 + 配置读写/热重载
+- [x] 本地 NeoForge server 验证：0 error 加载；selfCheck 两种模式命中断言通过
+      （in(-5,-5)=place-block / in(10,10)=freeze-updates / 区域外 null）
+- [x] WPF GUI：数据层已验证（`tools/ExplorationCheck` 真实 6764 region 22ms、命中 140/140、O(1)）；UI 布局/手势/配置读写编译+启动通过，待人工目检版面
 - [x] 文档：01-context / 02-goals / 03-building-blocks / ADR-0001 / runbooks / data/schema
 - [ ] 打包发布（`dotnet publish` 生成可部署 exe）+ 部署 zip
 
