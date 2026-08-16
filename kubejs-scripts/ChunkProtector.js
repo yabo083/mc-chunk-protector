@@ -153,16 +153,36 @@ function dimString(level) {
   }
 }
 
-// ---------------- 模式 A：防放置 ----------------
+// ---------------- 拦截事件 ----------------
+// 冻结区(freeze-updates) = 彻底锁定：禁放置 + 禁破坏，区域内方块状态不可变。
+
+function posOf(event) {
+  if (typeof event.getPos === 'function') return event.getPos();
+  if (event.pos !== undefined) {
+    var p = event.pos;
+    // JS map 形态特殊处理：取 BlockPos
+    if (p && p.getX !== undefined && typeof p.getX === 'function') return p;
+  }
+  return null;
+}
+
+function levelOf(event) {
+  if (event.getLevel && typeof event.getLevel === 'function') return event.getLevel();
+  if (event.level !== undefined) return event.level;
+  return null;
+}
+
+// ---------------- 模式 A：防放置 | 模式 B：冻结（都会拦截放置） ----------------
 NativeEvents.onEvent('net.neoforged.neoforge.event.level.BlockEvent$EntityPlaceEvent', function (event) {
   try {
-    var pos = event.getPos();
-    var level = event.getLevel();
+    var pos = posOf(event);
+    var level = levelOf(event);
     if (!pos || !level) return;
     var cx = Math.floor(pos.getX() / 16);
     var cz = Math.floor(pos.getZ() / 16);
     var dim = dimString(level);
-    if (queryBlock(dim, cx, cz) === PLACE_BLOCK) {
+    var hit = queryBlock(dim, cx, cz);
+    if (hit === PLACE_BLOCK || hit === FREEZE_UPDATES) {
       event.setCanceled(true);
     }
   } catch (e) {
@@ -170,11 +190,11 @@ NativeEvents.onEvent('net.neoforged.neoforge.event.level.BlockEvent$EntityPlaceE
   }
 });
 
-// ---------------- 模式 B：防更新 ----------------
-NativeEvents.onEvent('net.neoforged.neoforge.event.level.BlockEvent$NeighborNotifyEvent', function (event) {
+// ---------------- 模式 B：冻结（额外拦截破坏） ----------------
+NativeEvents.onEvent('net.neoforged.neoforge.event.level.BlockEvent$BreakEvent', function (event) {
   try {
-    var pos = event.getPos();
-    var level = event.getLevel();
+    var pos = posOf(event);
+    var level = levelOf(event);
     if (!pos || !level) return;
     var cx = Math.floor(pos.getX() / 16);
     var cz = Math.floor(pos.getZ() / 16);
@@ -183,7 +203,7 @@ NativeEvents.onEvent('net.neoforged.neoforge.event.level.BlockEvent$NeighborNoti
       event.setCanceled(true);
     }
   } catch (e) {
-    console.warn('[ChunkProtector] freeze handler error: ' + e);
+    console.warn('[ChunkProtector] break handler error: ' + e);
   }
 });
 

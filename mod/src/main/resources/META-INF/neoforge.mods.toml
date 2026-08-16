@@ -1,0 +1,21 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="MIT"
+
+[[mods]]
+modId="mcchunkprotector"
+version="1.0.0"
+displayName="MC Chunk Protector"
+authors="miyako"
+description="服务端区块保护工具(runtime)：按区块范围实现防放置(BlockEvent.EntityPlaceEvent)与冻结方块更新(Mixin 短路 Level.updateNeighborsAt)。仅服务端生效。开发验证版。"
+displayTest="IGNORE_ALL_VERSION"
+
+[[dependencies.mcchunkprotector]]
+modId="neoforge"
+type="required"
+versionRange="[21.1.0,)"
+ordering="AFTER"
+side="BOTH"
+
+[[mixins]]
+config="mcchunkprotector.mixins.json"

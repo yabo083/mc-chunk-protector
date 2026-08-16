@@ -18,8 +18,12 @@ dev-server/world/
 dev-server/logs/
 dev-server/local/
 dev-server/*.jar
+dev-server/classpath.txt
 dev-server/_scratch/
 *.log
+
+# Mod build outputs
+mod/build/
 
 # IDE
 .vs/
