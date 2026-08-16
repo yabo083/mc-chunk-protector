@@ -368,6 +368,19 @@ public partial class MainWindow : Window
         StatusText.Text = $"已保存 -> {_store.ConfigPath}";
     }
 
+    private void OpenMapDir_Click(object sender, RoutedEventArgs e)
+    {
+        var fbd = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "选择 Xaero world-map 数据目录（含各 DIM/mw-* 的文件夹）",
+        };
+        // 兼容旧版 .NET（若没有 OpenFolderDialog 退回文件夹浏览器）
+        if (fbd.ShowDialog() != true) return;
+        _settings.XaeroWorldMapDir = fbd.FolderName;
+        _settings.Save();
+        LoadEverything();
+    }
+
     private void OpenConfig_Click(object sender, RoutedEventArgs e)
     {
         var ofd = new Microsoft.Win32.OpenFileDialog
