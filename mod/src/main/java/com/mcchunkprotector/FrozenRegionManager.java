@@ -95,10 +95,6 @@ public final class FrozenRegionManager {
                 var f = new Fence(a.get(0).getAsLong(), a.get(1).getAsLong(),
                         a.get(2).getAsLong(), a.get(3).getAsLong());
                 target.get(dim).add(f);
-                // freeze 区同时也作为 place 的补充索引（语义：冻结=不可变更）
-                if (mode.equals(FREEZE_UPDATES)) {
-                    placeIndex.computeIfAbsent(dim, k -> new ArrayList<>()).add(f);
-                }
             }
         }
     }
