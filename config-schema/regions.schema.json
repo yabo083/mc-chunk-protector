@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/mc-chunk-protector/regions.schema.json",
+  "title": "MC Chunk Protector 保护区域配置",
+  "description": "GUI 写出、KubeJS 定时读取的服务端区块保护配置文件。路径：<server>/kubejs/config/regions.json",
+  "type": "object",
+  "required": ["version", "regions"],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "regions": {
+      "type": "array",
+      "description": "保护区域列表。GUI 与脚本都只对 enabled 且命中 chunkFences 的区域生效。",
+      "items": {
+        "$ref": "#/$defs/region"
+      }
+    }
+  },
+  "$defs": {
+    "region": {
+      "type": "object",
+      "required": ["id", "name", "dimension", "chunkFences", "mode", "enabled"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "稳定唯一 id（建议 UUID）"
+        },
+        "name": {
+          "type": "string",
+          "description": "显示名（GUI 展示用）"
+        },
+        "dimension": {
+          "type": "string",
+          "description": "维度资源名，如 minecraft:overworld / minecraft:the_nether / minecraft:the_end",
+          "examples": ["minecraft:overworld"]
+        },
+        "chunkFences": {
+          "type": "array",
+          "description": "一个或多个区块矩形（坐标均为区块坐标，含边界），矩形取并集。格式 [minChunkX, minChunkZ, maxChunkX, maxChunkZ]。",
+          "items": {
+            "type": "array",
+            "items": { "type": "integer" },
+            "minItems": 4,
+            "maxItems": 4
+          }
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["place-block", "freeze-updates"],
+          "description": "place-block=防放置(模式A)；freeze-updates=允许放置但抑制一切方块更新(模式B)"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "true 才生效；false 保留配置但暂停"
+        }
+      }
+    }
+  }
+}

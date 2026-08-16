@@ -1,0 +1,81 @@
+<Window x:Class="McChunkProtector.Gui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:McChunkProtector.Gui"
+        mc:Ignorable="d"
+        Title="MC Chunk Protector" Height="760" Width="1180" MinHeight="540" MinWidth="860"
+        WindowStartupLocation="CenterScreen">
+    <DockPanel>
+        <!-- 顶部工具栏 -->
+        <Border DockPanel.Dock="Top" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" BorderThickness="0,0,0,1" Padding="8,6">
+            <DockPanel>
+                <TextBlock Text="MC Chunk Protector" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,16,0" />
+                <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="Gray" Text="未加载配置" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button x:Name="ReloadBtn" Content="刷新" Padding="10,2" Margin="0,0,8,0" Click="Reload_Click" />
+                    <Button x:Name="SaveBtn" Content="保存配置" Padding="10,2" FontWeight="SemiBold" Click="Save_Click" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- 右侧面板 -->
+        <Border DockPanel.Dock="Right" Width="320" Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                BorderBrush="{DynamicResource {x:Static SystemColors.ActiveBorderBrushKey}}" BorderThickness="1,0,0,0" Padding="10">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top">
+                    <GroupBox Header="选区管理" Padding="6">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,6">
+                                <Button x:Name="AddRegionBtn" Content="＋ 新建选区" DockPanel.Dock="Left" Padding="8,3" Click="AddRegion_Click" />
+                                <Button x:Name="DelRegionBtn" Content="－ 删除" DockPanel.Dock="Right" Padding="8,3" Click="DeleteRegion_Click" IsEnabled="False" />
+                            </DockPanel>
+                            <DockPanel Margin="0,4,0,0">
+                                <TextBlock Text="模式：" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <ComboBox x:Name="ModeCombo" SelectedIndex="0" Width="200">
+                                    <ComboBoxItem Content="A · 防放置（出生点保护）" Tag="place-block" />
+                                    <ComboBoxItem Content="B · 防更新（冻结方块更新）" Tag="freeze-updates" />
+                                </ComboBox>
+                            </DockPanel>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <GroupBox Header="图层 / 底图" Padding="6" Margin="0,8,0,0">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,4">
+                                <TextBlock Text="底图" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <ComboBox x:Name="BaseMapCombo" SelectionChanged="BaseMap_Changed">
+                                    <ComboBoxItem Content="Xaero 地形（真实渲染）" Tag="xaero" />
+                                    <ComboBoxItem Content="探索网格（最快）" Tag="grid" IsSelected="True" />
+                                </ComboBox>
+                            </DockPanel>
+                            <CheckBox x:Name="ShowExploration" Content="探索区域高亮" IsChecked="True" Checked="LayerToggle_Changed" Unchecked="LayerToggle_Changed" />
+                            <CheckBox x:Name="ShowGrid" Content="区块网格" IsChecked="True" Checked="LayerToggle_Changed" Unchecked="LayerToggle_Changed" />
+                            <CheckBox x:Name="ShowRegions" Content="保护区选区" IsChecked="True" Checked="LayerToggle_Changed" Unchecked="LayerToggle_Changed" />
+                        </StackPanel>
+                    </GroupBox>
+                </StackPanel>
+
+                <TextBlock DockPanel.Dock="Top" Text="已配置选区" FontWeight="SemiBold" Margin="2,10,0,4" />
+                <ListBox x:Name="RegionList" DockPanel.Dock="Bottom" Margin="0,6,0,0" MinHeight="120"
+                         SelectionChanged="RegionList_SelectionChanged" />
+            </DockPanel>
+        </Border>
+
+        <!-- 中央地图区 -->
+        <Grid x:Name="MapHost" ClipToBounds="True" Background="#FF1E1E1E"
+              MouseWheel="Map_MouseWheel"
+              MouseDown="Map_MouseDown" MouseMove="Map_MouseMove" MouseUp="Map_MouseUp">
+            <Canvas x:Name="MapCanvas" />
+            <Border Background="#88000000" CornerRadius="4" Padding="8,4" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10">
+                <TextBlock x:Name="CoordText" Foreground="White"
+                           Text="世界: —    区块: —    缩放: —" FontFamily="Consolas" />
+            </Border>
+            <Border Background="#88000000" CornerRadius="4" Padding="8,4" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10">
+                <TextBlock Foreground="#DDDDDDDD" Text="拖拽平移 · 滚轮缩放 · Ctrl+拖拽框选 · 右键取消 · Esc 完成" />
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

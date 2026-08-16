@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "regions": [
+    {
+      "id": "test-freeze-0001",
+      "name": "测试冻结区",
+      "dimension": "minecraft:overworld",
+      "chunkFences": [[10, 10, 12, 12]],
+      "mode": "freeze-updates",
+      "enabled": true
+    },
+    {
+      "id": "test-place-0001",
+      "name": "测试防放置区",
+      "dimension": "minecraft:overworld",
+      "chunkFences": [[-5, -5, -3, -3]],
+      "mode": "place-block",
+      "enabled": true
+    }
+  ]
+}

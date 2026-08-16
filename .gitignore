@@ -9,8 +9,14 @@ gui/**/.vs/
 gui/**/bin/
 gui/**/obj/
 
-# Local test server (keep committed configs, ignore runtime data)
+# Local test server (keep committed configs/scripts, ignore runtime data)
 dev-server/run/
+dev-server/libraries/
+dev-server/world/
+dev-server/logs/
+dev-server/local/
+dev-server/*.jar
+dev-server/_scratch/
 *.log
 
 # IDE
