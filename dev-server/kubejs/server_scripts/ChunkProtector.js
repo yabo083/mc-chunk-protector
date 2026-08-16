@@ -132,6 +132,27 @@ ServerEvents.tick(function (event) {
   hotReload(false);
 });
 
+// 稳健取维度资源名（兼容 level.dimension 是属性(ResourceKey)还是方法）
+// 返回如 'minecraft:overworld'
+function dimString(level) {
+  try {
+    var dim = level.dimension;                 // 可能 object(ResourceKey) 或 function
+    if (typeof dim === 'function') dim = dim();
+    if (!dim) return 'minecraft:overworld';
+    var loc = dim.location;                    // 可能 function 或 属性(ResourceLocation)
+    var s;
+    if (typeof loc === 'function') s = loc();
+    else if (loc !== undefined) s = loc;
+    else s = dim;                              // 兜底
+    s = String(s);
+    // ResourceKey.toString 形如 "ResourceKey[minecraft:overworld / ...]"，需提取 id
+    var m = s.match(/([a-z0-9_.\-]+:[a-z0-9_.\-]+)/);
+    return m ? m[1] : s;
+  } catch (e) {
+    return 'minecraft:overworld';
+  }
+}
+
 // ---------------- 模式 A：防放置 ----------------
 NativeEvents.onEvent('net.neoforged.neoforge.event.level.BlockEvent$EntityPlaceEvent', function (event) {
   try {
@@ -140,7 +161,7 @@ NativeEvents.onEvent('net.neoforged.neoforge.event.level.BlockEvent$EntityPlaceE
     if (!pos || !level) return;
     var cx = Math.floor(pos.getX() / 16);
     var cz = Math.floor(pos.getZ() / 16);
-    var dim = String(level.dimension().location());
+    var dim = dimString(level);
     if (queryBlock(dim, cx, cz) === PLACE_BLOCK) {
       event.setCanceled(true);
     }
@@ -157,7 +178,7 @@ NativeEvents.onEvent('net.neoforged.neoforge.event.level.BlockEvent$NeighborNoti
     if (!pos || !level) return;
     var cx = Math.floor(pos.getX() / 16);
     var cz = Math.floor(pos.getZ() / 16);
-    var dim = String(level.dimension().location());
+    var dim = dimString(level);
     if (queryBlock(dim, cx, cz) === FREEZE_UPDATES) {
       event.setCanceled(true);
     }

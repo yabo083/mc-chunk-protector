@@ -1,4 +1,21 @@
 {
   "version": 1,
-  "regions": []
+  "regions": [
+    {
+      "id": "spawn-protect-0001",
+      "name": "出生点·防放置(测试A)",
+      "dimension": "minecraft:overworld",
+      "chunkFences": [[0, 0, 0, 0]],
+      "mode": "place-block",
+      "enabled": true
+    },
+    {
+      "id": "spawn-freeze-0001",
+      "name": "出生点东·防更新(测试B)",
+      "dimension": "minecraft:overworld",
+      "chunkFences": [[2, 0, 2, 0]],
+      "mode": "freeze-updates",
+      "enabled": true
+    }
+  ]
 }
