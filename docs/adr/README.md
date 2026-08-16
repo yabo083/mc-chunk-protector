@@ -13,4 +13,5 @@
 | 编号 | 标题 | 状态 | 日期 |
 |---|---|---|---|
 | 0001 | 地图底图：探索网格为主 + Xaero 真实渲染为可选增强 | accepted | 2026-02-16 |
+| 0002 | 拦截实现：纯 KubeJS 迁移到 NeoForge Java mod + Mixin | accepted | 2026-02-16 |
 | template | （模板） | — | — |
