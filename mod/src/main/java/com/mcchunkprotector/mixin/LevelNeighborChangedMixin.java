@@ -34,7 +34,7 @@ public class LevelNeighborChangedMixin {
         long cx = FrozenRegionManager.chunkOf(pos.getX());
         long cz = FrozenRegionManager.chunkOf(pos.getZ());
         if (mgr.isFrozen(dim, cx, cz)) {
-            ChunkProtectorMod.LOG.debug("[ChunkProtector][freeze] Level.neighborChanged suppressed at block({},{}) chunk({},{})", pos.getX(), pos.getZ(), cx, cz);
+            ChunkProtectorMod.LOG.info("[ChunkProtector][freeze] Level.neighborChanged suppressed at block({},{}) chunk({},{}) dim={}", pos.getX(), pos.getZ(), cx, cz, dim);
             ci.cancel();
         }
     }
