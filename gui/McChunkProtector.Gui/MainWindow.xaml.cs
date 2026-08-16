@@ -155,7 +155,7 @@ public partial class MainWindow : Window
                 {
                     foreach (var dim in Directory.EnumerateDirectories(server))
                     {
-                        foreach (var mw in Directory.EnumerateDirectories(dim, "mw-*"))
+                        foreach (var mw in Directory.EnumerateDirectories(dim, "mw*"))
                         {
                             if (Directory.GetFiles(mw, "*.zip").Length > 0) return mw;
                         }

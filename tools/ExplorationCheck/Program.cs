@@ -21,7 +21,7 @@ foreach (var drive in new[] { "C", "D", "E" })
         {
             foreach (var dim in Directory.EnumerateDirectories(server))
             {
-                foreach (var mw in Directory.EnumerateDirectories(dim, "mw-*"))
+                foreach (var mw in Directory.EnumerateDirectories(dim, "mw*"))
                 {
                     if (Directory.EnumerateFiles(mw, "*.zip").Any())
                         candleDirs.Add(mw);
