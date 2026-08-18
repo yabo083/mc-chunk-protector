@@ -1,6 +1,6 @@
 # regions.json 数据字典
 
-路径：`<server>/kubejs/config/regions.json`。目录名仅为现有部署兼容；KubeJS 不是依赖。权威 Schema 为 `config-schema/regions.schema.json`。
+路径：`<world>/serverconfig/mcchunkprotector/regions.json`。每个世界存档使用独立配置。权威 Schema 为 `config-schema/regions.schema.json`。
 
 | 字段 | 类型 | 说明 |
 |---|---|---|

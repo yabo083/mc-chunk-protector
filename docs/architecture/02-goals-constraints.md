@@ -10,7 +10,7 @@
 
 - MC 1.21.1 / NeoForge 21.1.219 / Java 21。
 - 服务器侧 mod；客户端不要求安装。
-- 唯一持久化契约是 `kubejs/config/regions.json`，路径不表示 KubeJS 依赖。
+- 唯一持久化契约是存档级 `serverconfig/mcchunkprotector/regions.json`。
 - 区块坐标按维度独立，矩形边界为闭区间。
 
 ## 质量需求

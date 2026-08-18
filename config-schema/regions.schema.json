@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.local/mc-chunk-protector/regions.schema.json",
   "title": "MC Chunk Protector 保护区域配置",
-  "description": "服务端 mod 通过 /cpor 写入并定时读取的区块保护配置。路径：<server>/kubejs/config/regions.json",
+  "description": "服务端 mod 通过 /cpor 写入并定时读取的存档级区块保护配置。路径：<world>/serverconfig/mcchunkprotector/regions.json",
   "type": "object",
   "required": ["version", "regions"],
   "properties": {

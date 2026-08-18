@@ -3,13 +3,14 @@ package com.mcchunkprotector;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,10 +38,26 @@ public class ChunkProtectorMod {
 
     @SubscribeEvent
     public void onServerStarting(ServerAboutToStartEvent event) {
-        // Keep the established path so existing server configurations continue to work.
-        Path cfg = FMLPaths.GAMEDIR.get().resolve("kubejs/config/regions.json");
+        Path cfg = worldRoot(event.getServer())
+                .resolve("serverconfig/mcchunkprotector/regions.json")
+                .normalize();
         FrozenRegionManager.init(cfg);
         LOG.info("[ChunkProtector] init, config={}", cfg);
+    }
+
+    private static Path worldRoot(MinecraftServer server) {
+        try {
+            java.lang.reflect.Method method;
+            try {
+                method = MinecraftServer.class.getMethod("getWorldPath", LevelResource.class);
+            } catch (NoSuchMethodException ignored) {
+                // The production 1.21.1 classpath used by the direct javac build exposes this mapped name.
+                method = MinecraftServer.class.getMethod("a", LevelResource.class);
+            }
+            return (Path) method.invoke(server, LevelResource.ROOT);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Unable to resolve the active world directory", error);
+        }
     }
 
     @SubscribeEvent

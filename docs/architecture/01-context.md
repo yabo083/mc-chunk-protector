@@ -13,7 +13,7 @@ MC Chunk Protector 是运行在 NeoForge 服务端内的区块保护工具。管
 |---|---|---|
 | NeoForge 21.1.219 | 事件与 Mixin | 宿主，MC 1.21.1 |
 | 管理员 | `/cpor`，权限等级 2 | 查询、添加、移除、重载 |
-| `kubejs/config/regions.json` | JSON 文件 | mod 自有持久化；路径为现有服务器兼容而保留 |
+| `<world>/serverconfig/mcchunkprotector/regions.json` | JSON 文件 | mod 自有的存档级持久化 |
 | 玩家/世界 | 原版游戏行为 | 保护判定只拦截已定义的事件和更新链 |
 
 ## 范围外

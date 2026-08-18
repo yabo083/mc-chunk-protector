@@ -9,7 +9,7 @@ pwsh -NoProfile -File tools\run_index_regression.ps1
 
 将 `dist\mods\mcchunkprotector-1.0.0.jar` 放入 MC 1.21.1 / NeoForge 21.1.219 服务端的 `mods\`。不需要 KubeJS、Rhino、GUI 或客户端安装。
 
-配置默认位于 `<server>/kubejs/config/regions.json`。文件不存在时可直接用 `/cpor add ...` 创建；也可复制 `config-schema/regions.example.json`。
+配置默认位于 `<world>/serverconfig/mcchunkprotector/regions.json`，每个存档独立。文件不存在时可直接用 `/cpor add ...` 创建；也可复制 `config-schema/regions.example.json`。
 
 ## OP 命令
 

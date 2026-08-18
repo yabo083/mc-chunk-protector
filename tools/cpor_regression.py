@@ -3,7 +3,7 @@ from pathlib import Path
 from rcon_client import execute
 
 
-CONFIG = Path(__file__).parents[1] / "dev-server" / "kubejs" / "config" / "regions.json"
+CONFIG = Path(__file__).parents[1] / "dev-server" / "world" / "serverconfig" / "mcchunkprotector" / "regions.json"
 COMMANDS = [
     "cpor status 123456 -123456",
     "cpor add freeze rect 123456 -123456 123457 -123455",
@@ -17,7 +17,7 @@ COMMANDS = [
 
 
 def main():
-    original = CONFIG.read_bytes()
+    original = CONFIG.read_bytes() if CONFIG.exists() else None
     try:
         results = execute(COMMANDS)
         for command, response in results:
@@ -28,7 +28,10 @@ def main():
         assert "freeze=false" in results[4][1]
         assert "place=true" in results[6][1]
     finally:
-        CONFIG.write_bytes(original)
+        if original is None:
+            CONFIG.unlink(missing_ok=True)
+        else:
+            CONFIG.write_bytes(original)
         execute(["cpor reload"])
 
     print("PASS: /cpor add, remove, status, and config restore")

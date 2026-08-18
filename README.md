@@ -38,10 +38,10 @@
 配置默认保存在：
 
 ```text
-<服务器或存档根目录>/kubejs/config/regions.json
+<世界存档根目录>/serverconfig/mcchunkprotector/regions.json
 ```
 
-路径中的 `kubejs` 仅用于兼容已有部署，不代表需要安装 KubeJS。文件不存在时，第一次执行 `/cpor add ...` 会自动创建。
+每个世界存档拥有独立配置。文件不存在时，第一次执行 `/cpor add ...` 会自动创建。
 
 ## 命令速查
 
