@@ -18,11 +18,9 @@ MC 1.21.1 / NeoForge 21.1.219 服务端区块保护 mod。版本已在本地 PCL
 
 ## 构建与验证
 
-```powershell
-pwsh -NoProfile -File mod\build.ps1
-pwsh -NoProfile -File tools\run_index_regression.ps1
+```text
+./gradlew build
 python tools\freeze_regression.py
-pwsh -NoProfile -File scripts\package.ps1
 ```
 
-`mod\build.ps1` 使用 `dev-server\classpath.txt`，输出 `dist\mods\mcchunkprotector-1.0.0.jar`。
+标准构建使用 Java 21、Gradle Wrapper 8.14.3 与 NeoForge ModDev，输出 `build\libs\mcchunkprotector-1.0.0.jar`；`./gradlew build` 已包含两组 standalone 回归。实际世界冻结回归仍需已启动且启用 RCON 的 `dev-server`。

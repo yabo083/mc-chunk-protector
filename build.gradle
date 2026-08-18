@@ -1,0 +1,73 @@
+plugins {
+    id 'java'
+    id 'net.neoforged.moddev' version '2.0.95'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = 'mcchunkprotector'
+}
+
+sourceSets {
+    main {
+        java.srcDirs = ['mod/src/main/java']
+        resources.srcDirs = ['mod/src/main/resources']
+    }
+    regression {
+        java.srcDirs = ['tools']
+        compileClasspath = sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath = output + compileClasspath + sourceSets.main.runtimeClasspath
+    }
+}
+
+neoForge {
+    version = project.neo_version
+
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+tasks.withType(ProcessResources).configureEach {
+    inputs.property 'mod_version', project.mod_version
+
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand mod_version: project.mod_version
+    }
+}
+
+tasks.register('frozenRegionManagerRegression', JavaExec) {
+    dependsOn tasks.named('regressionClasses')
+    classpath = sourceSets.regression.runtimeClasspath
+    mainClass = 'FrozenRegionManagerRegression'
+}
+
+tasks.register('regionConfigEditorRegression', JavaExec) {
+    dependsOn tasks.named('regressionClasses')
+    classpath = sourceSets.regression.runtimeClasspath
+    mainClass = 'com.mcchunkprotector.RegionConfigEditorRegression'
+}
+
+tasks.register('regressionTest') {
+    dependsOn tasks.named('frozenRegionManagerRegression')
+    dependsOn tasks.named('regionConfigEditorRegression')
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('regressionTest')
+}

@@ -12,6 +12,9 @@ $resSrc  = Join-Path $root 'mod\src\main\resources'
 $out     = Join-Path $root 'mod\build\classes'
 $jarOut  = Join-Path $root 'dist\mods'
 $classpathFile = Join-Path $ServerDir 'classpath.txt'
+$versionLine = Get-Content (Join-Path $root 'gradle.properties') | Where-Object { $_ -match '^mod_version=' } | Select-Object -First 1
+if (-not $versionLine) { Write-Error "gradle.properties 缺少 mod_version" }
+$modVersion = $versionLine.Substring('mod_version='.Length)
 
 if (-not (Test-Path $classpathFile)) {
     Write-Error "缺少 classpath.txt。请先在 dev-server 运行:
@@ -36,9 +39,11 @@ if ($LASTEXITCODE -ne 0) { throw "javac failed" }
 
 # 复制资源（mods.toml / mixins.json），保留目录结构（META-INF/ 等）
 Copy-Item -Path "$resSrc\*" -Destination $out -Recurse -Force -ErrorAction Stop
+$modsToml = Join-Path $out 'META-INF\neoforge.mods.toml'
+(Get-Content $modsToml -Raw).Replace('${mod_version}', $modVersion) | Set-Content $modsToml -Encoding UTF8
 
 # 打包 jar
-$jarPath = Join-Path $jarOut 'mcchunkprotector-1.0.0.jar'
+$jarPath = Join-Path $jarOut "mcchunkprotector-$modVersion.jar"
 & jar cf $jarPath -C $out .
 Write-Host "已生成: $jarPath"
 Get-Item $jarPath | Select-Object FullName,Length

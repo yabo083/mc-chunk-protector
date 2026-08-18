@@ -249,17 +249,17 @@ place=false freeze=true
 
 ## 构建与验证
 
-项目当前使用本地 NeoForge 服务端 classpath 构建：
-
-```powershell
-pwsh -NoProfile -File mod\build.ps1
-pwsh -NoProfile -File tools\run_index_regression.ps1
-```
-
-构建产物：
+标准构建需要 Java 21；仓库中的 Gradle Wrapper 固定使用 Gradle 8.14.3：
 
 ```text
-dist/mods/mcchunkprotector-1.0.0.jar
+./gradlew build
+# Windows cmd: gradlew.bat build
+```
+
+`build` 会编译 mod，并运行索引与区域编辑器回归。构建产物：
+
+```text
+build/libs/mcchunkprotector-1.0.0.jar
 ```
 
 实际世界回归需要启动 `dev-server` 并启用 RCON：
@@ -269,11 +269,20 @@ python tools/cpor_regression.py
 python tools/freeze_regression.py
 ```
 
+GitHub Actions 会在 `main` push、PR 和手动触发时构建并上传 14 天有效的 Actions artifact。推送与 `gradle.properties` 中 `mod_version` 一致、且提交属于 `main` 的 `v*` 标签时，还会创建带 jar 的 GitHub Release：
+
+```text
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Modrinth 与 CurseForge 发布步骤目前保留在 workflow 中，但已注释禁用。
+
 ## 项目目录
 
 ```text
 config-schema/  JSON 配置协议与示例
-mod/            NeoForge mod 源码和构建脚本
+mod/            NeoForge mod 源码与资源
 dev-server/     本地验证服务器（运行数据被忽略）
 tools/          索引、几何和实际世界回归测试
 docs/           架构、ADR、数据字典与 runbook

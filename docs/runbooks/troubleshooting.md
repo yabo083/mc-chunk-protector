@@ -11,4 +11,4 @@
 | 新放下的栅栏/红石有单向连接 | 初始 `BlockState` 按调用方结果保留；只冻结写入后的变化 |
 | 作物、流体或方块实体仍运行 | scheduled/random/fluid/block-entity tick 不在当前冻结契约内 |
 
-构建依赖 `dev-server/classpath.txt`。不要用完整客户端 modpack 直接启动 dedicated server；本地验证使用最小 NeoForge 服务端。
+标准构建使用 Java 21、Gradle Wrapper 8.14.3 和 NeoForge ModDev。不要用完整客户端 modpack 直接启动 dedicated server；实际世界验证使用最小 NeoForge 服务端。

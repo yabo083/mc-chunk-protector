@@ -2,12 +2,12 @@
 
 ## 构建
 
-```powershell
-pwsh -NoProfile -File mod\build.ps1
-pwsh -NoProfile -File tools\run_index_regression.ps1
+```text
+./gradlew build
+# Windows cmd: gradlew.bat build
 ```
 
-将 `dist\mods\mcchunkprotector-1.0.0.jar` 放入 MC 1.21.1 / NeoForge 21.1.219 服务端的 `mods\`。不需要 KubeJS、Rhino、GUI 或客户端安装。
+使用 Java 21；Gradle Wrapper 固定为 8.14.3。`build` 已包含索引和区域编辑器回归。将 `build\libs\mcchunkprotector-1.0.0.jar` 放入 MC 1.21.1 / NeoForge 21.1.219 服务端的 `mods\`。不需要 KubeJS、Rhino、GUI 或客户端安装。
 
 配置默认位于 `<world>/serverconfig/mcchunkprotector/regions.json`，每个存档独立。文件不存在时可直接用 `/cpor add ...` 创建；也可复制 `config-schema/regions.example.json`。
 

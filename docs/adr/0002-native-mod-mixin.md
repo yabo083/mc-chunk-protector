@@ -18,7 +18,7 @@ accepted
 - 模式 B（冻结更新）：Mixin 短路 `ServerLevel/Level#updateNeighborsAt`、`Level#neighborChanged`，并在 `Level#neighborShapeChanged` 以目标区块为准取消形状更新。后者是防止红石、栅栏等通过 `NeighborUpdater.executeShapeUpdate` 直接写回状态的关键。
 - 冻结区块接受调用方计算出的初始 `BlockState`；只阻止写入后的邻居通知和形状重算，不为某种方块重置默认状态。
 - 配置由不可变快照提供查询；每 40 server ticks 检查文件元数据，查询热路径不读盘、不解析 JSON、不按保护面积分配对象。
-- 构建用 **javac 免 Gradle**（classpath 指向 dev-server 已装 Neoforge libraries），`mod/build.ps1`。
+- 标准构建使用 Java 21、Gradle Wrapper 8.14.3 和 NeoForge ModDev；`./gradlew build` 同时执行索引与区域编辑器回归。本地直接 `javac` 脚本仅保留为开发辅助，不作为 CI/发布入口。
 - 配置由 OP 命令 `/cpor` 管理，存放在世界存档的 `serverconfig/mcchunkprotector/regions.json`，不依赖 KubeJS。
 
 ## 后果
