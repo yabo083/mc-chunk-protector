@@ -20,9 +20,11 @@ dev-server/world/
 dev-server/logs/
 dev-server/local/
 dev-server/*.jar
+dev-server/mods/*.jar
 dev-server/classpath.txt
 dev-server/_scratch/
 *.log
+*.err
 /logs/
 
 # Mod build outputs

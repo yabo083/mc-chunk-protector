@@ -1,41 +1,18 @@
-# 数据字典（schema）
+# regions.json 数据字典
 
-## regions.json（GUI 写出 / 服务端 mod 读取）
-
-路径：`<server>/kubejs/config/regions.json`。
-权威 JSON Schema：`config-schema/regions.schema.json`。
+路径：`<server>/kubejs/config/regions.json`。目录名仅为现有部署兼容；KubeJS 不是依赖。权威 Schema 为 `config-schema/regions.schema.json`。
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `version` | int | 协议版本，当前 `1`。 |
-| `regions[]` | array | 保护区域列表。 |
-| `regions[].id` | string | 稳定唯一 id（GUI 生成 UUID）。 |
-| `regions[].name` | string | 显示名。 |
-| `regions[].dimension` | string | 维度资源名，`minecraft:overworld` / `the_nether` / `the_end`。 |
-| `regions[].mode` | `place-block` \| `freeze-updates` | **A 防放置** / **B 防邻居与形状更新**；B 接受初始 `BlockState`，不冻结 scheduled/random/fluid/block-entity tick。 |
-| `regions[].enabled` | bool | `false` 时保留但暂停。 |
-| `regions[].chunkFences` | `[[minX,minZ,maxX,maxZ],…]` | 区块矩形（闭区间），矩形取并集。坐标为**区块坐标**。 |
+| `version` | int | 当前必须为 `1` |
+| `regions[]` | array | 区域记录 |
+| `id` | string | 稳定标识；命令生成 `cpor:<dimension>:<mode>` |
+| `name` | string | 人类可读名称 |
+| `dimension` | resource location | 例如 `minecraft:overworld` |
+| `mode` | `place-block` \| `freeze-updates` | 防放置或冻结邻居/形状更新 |
+| `enabled` | bool | `false` 时保留但不生效，也不被命令合并 |
+| `chunkFences` | `[[minX,minZ,maxX,maxZ], ...]` | 闭区间区块矩形的并集 |
 
-### 例子
-```json
-{
-  "version": 1,
-  "regions": [
-    { "id": "uuid-1", "name": "基地", "dimension": "minecraft:overworld",
-      "mode": "place-block", "enabled": true,
-      "chunkFences": [[10,10,12,12]] }
-  ]
-}
-```
+方块坐标到区块坐标使用 floor 除 16：`chunk = block >> 4`，负坐标同样适用。`/cpor` 会把同一维度、同一模式的启用记录合并为一个命令管理记录；禁用记录与其他维度/模式保持不变。
 
-## 坐标系统
-
-- **区块坐标** `(cx,cz)`：1 区块 = 16×16 方块。世界方块 `(bx,bz)` → 区块 `(⌊bx/16⌋, ⌊bz/16⌋)`。
-- **Xaero region 坐标** `(rx,rz)`：一个 region = 32×32 区块 = 512×512 方块。
-  - region 文件 `{rx}_{rz}.zip` → 覆盖方块 `[rx*512, rz*512]` 起 512×512。
-  - 方块 → region：`rx = bx >> 9`。
-- regions.json 的 `chunkFences` 用**区块坐标**（避免 GUI/GUI schema 与 Xaero region 混用歧义）。
-
-## schema 变更记录
-
-- **v1**（2026-02）：初始。`regions[].mode` 二元、`chunkFences` 区块矩形列表。
+运行时额外限制配置为 16 MiB、总矩形数 250,000，并限制空间桶总引用、单桶重叠候选和超大矩形数量。Schema 表达坐标和单数组上限；跨记录总量与索引形状由 mod 完整校验。

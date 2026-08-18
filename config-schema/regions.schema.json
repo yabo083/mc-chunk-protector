@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.local/mc-chunk-protector/regions.schema.json",
   "title": "MC Chunk Protector 保护区域配置",
-  "description": "GUI 写出、服务端 mod 定时读取的区块保护配置文件。路径：<server>/kubejs/config/regions.json",
+  "description": "服务端 mod 通过 /cpor 写入并定时读取的区块保护配置。路径：<server>/kubejs/config/regions.json",
   "type": "object",
   "required": ["version", "regions"],
   "properties": {
@@ -12,7 +12,8 @@
     },
     "regions": {
       "type": "array",
-      "description": "保护区域列表。GUI 与脚本都只对 enabled 且命中 chunkFences 的区域生效。",
+      "description": "保护区域列表。只有 enabled 且命中 chunkFences 的区域生效。",
+      "maxItems": 250000,
       "items": {
         "$ref": "#/$defs/region"
       }
@@ -25,11 +26,13 @@
       "properties": {
         "id": {
           "type": "string",
+          "minLength": 1,
           "description": "稳定唯一 id（建议 UUID）"
         },
         "name": {
           "type": "string",
-          "description": "显示名（GUI 展示用）"
+          "minLength": 1,
+          "description": "人类可读名称"
         },
         "dimension": {
           "type": "string",
@@ -39,9 +42,14 @@
         "chunkFences": {
           "type": "array",
           "description": "一个或多个区块矩形（坐标均为区块坐标，含边界），矩形取并集。格式 [minChunkX, minChunkZ, maxChunkX, maxChunkZ]。",
+          "maxItems": 250000,
           "items": {
             "type": "array",
-            "items": { "type": "integer" },
+            "items": {
+              "type": "integer",
+              "minimum": -134217728,
+              "maximum": 134217727
+            },
             "minItems": 4,
             "maxItems": 4
           }

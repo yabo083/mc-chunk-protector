@@ -1,64 +1,28 @@
 # AGENTS.md
 
-给 AI agent 与协作者的工作规则。架构文档地图见 `docs/README.md`（不要复制这里的内容过去）。
+给 AI agent 与协作者的项目规则。架构地图见 `docs/README.md`。
 
-## 项目定位（一句话）
+## 定位与版本
 
-MMC 服务端「区块保护」工具：NeoForge Java mod + Mixin（防放置 / 防邻居与形状更新）+ C# WPF 外置 GUI（Xaero 地图底图 + 手势选区 + 配置同步），最终部署到甲方服务器。
-
-## 技术栈与版本（不可随意升版本）
-
-| 层 | 选型 | 版本约束 |
-|---|---|---|
-| MC 服务端 | NeoForge | 21.1.219（MC 1.21.1） |
-| 脚本运行时 | KubeJS (NeoForge) | 2101.7.2 build.348，rhino 2101.2.7 |
-| GUI | C# / WPF | .NET 8（SDK 8.0.424 已装） |
-| 地图数据源 | Xaero World Map | 读 `xaero/world-map/<server>/DIM<n>/mw$-<seed>/{x}_{z}.zip` 内 `region.xaero` |
-
-**锁定理由**：已在 PCL2 本地环境实测，换版本会破坏可与甲方复现的环境。升级需先验证并写 ADR。
-
-## 常用命令
-
-```powershell
-# GUI 构建/运行（cwd: gui/）
-dotnet build -c Release
-dotnet run --project gui/McChunkProtector.Gui -c Debug
-
-# 跑 KubeJS 类型检查（依赖 KubeJS probe 输出的 jsconfig，可选）
-# 本地验证：见 docs/runbooks/setup.md
-
-# 打包发布 WPF（生成可部署 exe）
-dotnet publish gui -c Release -r win-x64 --self-contained /p:PublishSingleFile=true
-```
+MC 1.21.1 / NeoForge 21.1.219 服务端区块保护 mod。版本已在本地 PCL2 与专用服务器验证，升级前必须重新验证并记录 ADR。
 
 ## 关键约定
 
-1. **拦截方案 = NeoForge Java mod + Mixin**（已放弃纯 KubeJS）。**1.21.1 里 `NeighborNotifyEvent` 的 cancel 返回值被 `Level.updateNeighborsAt` 丢弃，完全无效**。冻结实现拦截 `ServerLevel/Level.updateNeighborsAt`、`Level.neighborChanged`，以及按目标区块拦截 `Level.neighborShapeChanged`，覆盖普通通知和形状状态写回。初始放置状态保留；scheduled/random/fluid/block-entity tick 不在当前模式契约内。
-2. **不改 MC 核心/其他 mods 源码**。拦截走 mod 的 Mixin + `BlockEvent.EntityPlaceEvent`（防放置）；GUI 与 mod **只通过 `kubejs/config/regions.json` 交换**。
-3. **性能红线**：保护判定不随保护区面积扩张；查询热路径无磁盘 IO、JSON 解析和装箱，配置每 40 server ticks 只检查一次文件元数据。地图渲染 LOD 惰性加载。
-4. **配置协议**是 GUI 与 mod 的契约：改 `config-schema/regions.json` 结构时必须同步 schema、mod 读取方、WPF 写出方三处，并写 ADR。
-5. **文档同步**：改架构先读 `docs/architecture/`；不可逆决策写 `docs/adr/`；部署/排障写 `docs/runbooks/`。
-6. **产物可复现**：`mod/`（Java 源码 + build.ps1）+ `config-schema/` 复制到任一新鲜 NeoForge 服务器即用。
+1. 实现使用 NeoForge Java mod + Mixin，不依赖 KubeJS、GUI 或客户端安装。
+2. 模式 A 通过 `BlockEvent.EntityPlaceEvent` 防放置；模式 B 拦截 `ServerLevel/Level.updateNeighborsAt`、`Level.neighborChanged` 和目标侧 `Level.neighborShapeChanged`。
+3. 模式 B 接受初始 `BlockState`；scheduled/random/fluid/block-entity tick 不在当前契约内。
+4. OP 管理接口只有 `/cpor`。持久化路径保持 `<server>/kubejs/config/regions.json`，仅为兼容现有服务器目录。
+5. 性能红线：热查询无磁盘 IO、JSON 解析、装箱和按保护面积展开；配置每 40 server ticks 只检查一次元数据。
+6. 修改配置结构时同步 `config-schema/regions.schema.json`、mod 读写实现、回归测试和 ADR。
+7. 不修改 MC 或第三方 mod 源码；不提交 `dev-server` 运行数据与本机构建产物。
 
-## 构建 mod（免 Gradle，javac）
+## 构建与验证
 
 ```powershell
-# 依赖：dev-server 装好 Neoforge 后生成 classpath
-#   (Get-ChildItem <dev-server>\libraries -Recurse -Filter *.jar | ? {$_.Name -notmatch 'sources|javadoc'} | % FullName) -join ';' > <dev-server>\classpath.txt
-
-pwsh -NoProfile -File mod\build.ps1       # 输出 dist\mods\mcchunkprotector-1.0.0.jar
+pwsh -NoProfile -File mod\build.ps1
+pwsh -NoProfile -File tools\run_index_regression.ps1
+python tools\freeze_regression.py
+pwsh -NoProfile -File scripts\package.ps1
 ```
-本地验证：运行 `tools\run_index_regression.ps1`，再将 jar 放入 `dev-server\mods` 启动，用 `python tools\freeze_regression.py` 验证初始状态、普通更新和跨区块边界。
 
-## 完成状态
-
-- [x] 仓库骨架 / git init
-- [x] 三方调研（CancelBlockUpdate 源码级 / NeoForge事件+更新链 / coremod）→ 结论：1.21.1 必须 Mixin，KubeJS 不可行
-- [x] Xaero 地图格式调研 + ADR-0001
-- [x] **NeoForge mod `mcchunkprotector`**（`mod/`）：模式A=`BlockEvent.EntityPlaceEvent`；模式B=`Mixin 拦截 updateNeighborsAt/neighborChanged/neighborShapeChanged`
-- [x] dev-server 实测：mod 加载成功 + freeze Mixin 命中 `chunk(2,0)` 日志
-- [x] WPF GUI：数据层已验证（真实 6764 region 22ms、命中 140/140、O(1)）；UI 编译+启动通过，待人工目检版面
-- [x] 已部署 mod 到用户 PCL2（单机/局域网均生效，已移除旧 KubeJS 脚本避免双拦）
-- [x] 文档：01-context / 02-goals / 03-building-blocks / ADR-0001 / runbooks / data/schema
-
-（此清单会随进度更新，不做重复粘贴。）
+`mod\build.ps1` 使用 `dev-server\classpath.txt`，输出 `dist\mods\mcchunkprotector-1.0.0.jar`。

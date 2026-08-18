@@ -19,7 +19,7 @@ accepted
 - 冻结区块接受调用方计算出的初始 `BlockState`；只阻止写入后的邻居通知和形状重算，不为某种方块重置默认状态。
 - 配置由不可变快照提供查询；每 40 server ticks 检查文件元数据，查询热路径不读盘、不解析 JSON、不按保护面积分配对象。
 - 构建用 **javac 免 Gradle**（classpath 指向 dev-server 已装 Neoforge libraries），`mod/build.ps1`。
-- 配置仍读 `kubejs/config/regions.json`（与 GUI 共契约）。
+- 配置仍读 `kubejs/config/regions.json`，仅为兼容已经部署的服务器目录；配置由 OP 命令 `/cpor` 管理，不依赖 KubeJS。
 
 ## 后果
 - 正面：Mixin 覆盖通知和形状写回，冻结可感知且跨区块目标检查正确；不依赖 KubeJS 事件桥；仅服务端逻辑，客户端无副作用。

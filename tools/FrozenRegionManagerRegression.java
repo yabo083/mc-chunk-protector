@@ -11,7 +11,7 @@ public final class FrozenRegionManagerRegression {
     public static void main(String[] args) throws Exception {
         Path config = Files.createTempFile("mcchunkprotector-regression-", ".json");
         try {
-            write(config, "{\"version\":1,\"regions\":[{\"enabled\":true,\"dimension\":\"minecraft:overworld\",\"mode\":\"freeze-updates\",\"chunkFences\":[[-2,-1,2,3],[100000,100000,100000,100000]]}]}");
+            write(config, "{\"version\":1,\"regions\":[{\"id\":\"base\",\"name\":\"base\",\"enabled\":true,\"dimension\":\"minecraft:overworld\",\"mode\":\"freeze-updates\",\"chunkFences\":[[-2,-1,2,3],[100000,100000,100000,100000]]}]}");
             FrozenRegionManager.init(config);
             var manager = FrozenRegionManager.get();
 
@@ -28,6 +28,46 @@ public final class FrozenRegionManagerRegression {
             manager.refresh();
             check(manager.isFrozen(OVERWORLD, 0, 0), "last valid snapshot after malformed write");
             check(manager.frozenFenceCount(OVERWORLD) == 2, "last valid fence count");
+
+            write(config, "{\"version\":1,\"regions\":[{\"name\":\"invalid disabled\",\"enabled\":false,\"dimension\":\"minecraft:overworld\",\"mode\":\"freeze-updates\",\"chunkFences\":[]}]}");
+            expectFailure(manager::reload, "disabled region must still be fully validated");
+            check(manager.isFrozen(OVERWORLD, 0, 0), "invalid disabled record keeps last valid snapshot");
+
+            write(config, "{\"version\":\"1\",\"regions\":[]}");
+            expectFailure(manager::reload, "version must be a JSON integer");
+            check(manager.isFrozen(OVERWORLD, 0, 0), "invalid version keeps last valid snapshot");
+
+            write(config, "{\"version\":1,\"regions\":["
+                    + "{\"id\":\"duplicate\",\"name\":\"a\",\"enabled\":false,\"dimension\":\"minecraft:overworld\",\"mode\":\"freeze-updates\",\"chunkFences\":[]},"
+                    + "{\"id\":\"duplicate\",\"name\":\"b\",\"enabled\":true,\"dimension\":\"minecraft:overworld\",\"mode\":\"freeze-updates\",\"chunkFences\":[]}]}" );
+            expectFailure(manager::reload, "region ids must be unique");
+            check(manager.isFrozen(OVERWORLD, 0, 0), "duplicate ids keep last valid snapshot");
+
+            StringBuilder broad = new StringBuilder("{\"version\":1,\"regions\":[");
+            for (int i = 0; i < 65; i++) {
+                if (i > 0) broad.append(',');
+                broad.append("{\"id\":\"").append(i)
+                        .append("\",\"name\":\"broad\",\"enabled\":true,\"dimension\":\"test:d")
+                        .append(i)
+                        .append("\",\"mode\":\"freeze-updates\",\"chunkFences\":[[-134217728,-134217728,134217727,134217727]]}");
+            }
+            write(config, broad.append("]}").toString());
+            long started = System.nanoTime();
+            expectFailure(manager::reload, "broad-fence budget must span all dimension indexes");
+            check((System.nanoTime() - started) / 1_000_000 < 2_000, "global broad-fence rejection must be fast");
+
+            StringBuilder overlapping = new StringBuilder("{\"version\":1,\"regions\":[");
+            for (int i = 0; i < 1025; i++) {
+                if (i > 0) overlapping.append(',');
+                overlapping.append("{\"id\":\"").append(i).append("\",\"name\":\"overlap\",\"enabled\":true,\"dimension\":\"minecraft:overworld\",\"mode\":\"freeze-updates\",\"chunkFences\":[[0,0,0,0]]}");
+            }
+            write(config, overlapping.append("]}").toString());
+            started = System.nanoTime();
+            expectFailure(manager::reload, "overlapping bucket candidate limit");
+            check((System.nanoTime() - started) / 1_000_000 < 2_000, "overlap rejection must be fast");
+
+            Files.write(config, new byte[(16 * 1024 * 1024) + 1]);
+            expectFailure(manager::reload, "bounded read must reject oversized config");
             System.out.println("PASS: FrozenRegionManager index and last-known-good snapshot");
         } finally {
             Files.deleteIfExists(config);
@@ -41,5 +81,19 @@ public final class FrozenRegionManagerRegression {
 
     private static void check(boolean condition, String name) {
         if (!condition) throw new AssertionError("FAIL: " + name);
+    }
+
+    private static void expectFailure(ThrowingAction action, String name) throws Exception {
+        try {
+            action.run();
+            throw new AssertionError("FAIL: " + name + " did not fail");
+        } catch (IllegalArgumentException expected) {
+            // Expected validation failure.
+        }
+    }
+
+    @FunctionalInterface
+    private interface ThrowingAction {
+        void run() throws Exception;
     }
 }

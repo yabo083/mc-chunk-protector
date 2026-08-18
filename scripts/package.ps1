@@ -7,25 +7,25 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $deploy = Join-Path $root 'dist\deploy'
-$exe = Join-Path $root 'dist\gui\McChunkProtector.Gui.exe'
+$jar = Join-Path $root 'dist\mods\mcchunkprotector-1.0.0.jar'
 
-if (-not (Test-Path $exe)) {
-    Write-Error "未找到发布 exe: $exe。请先运行: dotnet publish ...  或加 -SkipRebuild 跳过检查。"
+if (-not $SkipRebuild) {
+    & (Join-Path $root 'mod\build.ps1')
+    if ($LASTEXITCODE -ne 0) { throw 'mod build failed' }
+}
+if (-not (Test-Path $jar)) {
+    Write-Error "未找到 mod: $jar"
 }
 
 # 清空旧的部署目录
 if (Test-Path $deploy) { Remove-Item $deploy -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $deploy | Out-Null
 
-# 1) GUI 可执行文件
-New-Item -ItemType Directory -Force -Path (Join-Path $deploy 'gui') | Out-Null
-Copy-Item $exe (Join-Path $deploy 'gui\')
+# 1) 服务端 mod
+New-Item -ItemType Directory -Force -Path (Join-Path $deploy 'mods') | Out-Null
+Copy-Item $jar (Join-Path $deploy 'mods\')
 
-# 2) KubeJS 服务端脚本（甲方复制到 <server>/kubejs/server_scripts/）
-New-Item -ItemType Directory -Force -Path (Join-Path $deploy 'kubejs\server_scripts') | Out-Null
-Copy-Item (Join-Path $root 'kubejs-scripts\ChunkProtector.js') (Join-Path $deploy 'kubejs\server_scripts\')
-
-# 3) 配置模板 + schema
+# 2) 配置模板 + schema
 New-Item -ItemType Directory -Force -Path (Join-Path $deploy 'config-schema') | Out-Null
 Copy-Item (Join-Path $root 'config-schema\regions.schema.json') (Join-Path $deploy 'config-schema\')
 Copy-Item (Join-Path $root 'config-schema\regions.example.json') (Join-Path $deploy 'config-schema\regions.json.example')

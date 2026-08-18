@@ -32,12 +32,12 @@ public class ChunkProtectorMod {
 
     @SubscribeEvent
     public void onRegisterCommands(net.neoforged.neoforge.event.RegisterCommandsEvent event) {
-        InspectCommand.register(event.getDispatcher());
+        CporCommand.register(event.getDispatcher());
     }
 
     @SubscribeEvent
     public void onServerStarting(ServerAboutToStartEvent event) {
-        // 配置路径：<server>/kubejs/config/regions.json（与 GUI / 旧 KubeJS 脚本共契约）
+        // Keep the established path so existing server configurations continue to work.
         Path cfg = FMLPaths.GAMEDIR.get().resolve("kubejs/config/regions.json");
         FrozenRegionManager.init(cfg);
         LOG.info("[ChunkProtector] init, config={}", cfg);

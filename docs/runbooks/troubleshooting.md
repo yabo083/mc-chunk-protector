@@ -1,28 +1,14 @@
 # 排障手册
 
-> 这些是本项目开发/验证过程中真实踩过的坑，未来维护优先查这里。
+| 症状 | 检查与处理 |
+|---|---|
+| `/cpor` 不可见 | 确认执行者权限等级至少为 2，且服务端日志显示 mod 已加载 |
+| 命令提示配置无效 | 查看服务端日志中的完整异常；修复 `kubejs/config/regions.json` 后执行 `/cpor reload` |
+| 外部改文件未立即生效 | 等待最多 40 server ticks，或执行 `/cpor reload` |
+| 外部编辑与 `/cpor` 同时发生 | 不支持并发写入；保存文件后再执行命令。mod 会尽力检测已发生的覆盖冲突并要求重试 |
+| 配置错误后旧保护仍生效 | 这是 last-known-good 设计；无效候选不会替换当前快照 |
+| `/setblock` 能在 place 区域写入 | 模式 A 拦截玩家实体放置事件，不拦管理员命令 |
+| 新放下的栅栏/红石有单向连接 | 初始 `BlockState` 按调用方结果保留；只冻结写入后的变化 |
+| 作物、流体或方块实体仍运行 | scheduled/random/fluid/block-entity tick 不在当前冻结契约内 |
 
-## ChunkProtector.js 语法/运行
-
-| 症状 | 根因 | 解决 |
-|---|---|---|
-| `signature: SyntaxError: invalid object initializer` | KubeJS/Rhino **不支持 ES6 对象属性简写** `{minX,minZ}` | 写成 `{minX:minX, minZ:minZ}` |
-| `SyntaxError: missing name after . operator` | Rhino 不支持**可选链** `?.` | 用 `a.b ? ... : ...` 或 if 判断 |
-| `ReferenceError: "globalThis" is not defined` | KubeJS 脚本没有 `globalThis` | 用 KubeJS 提供的全局 **`global`** 对象 |
-| `ReferenceError: "globalThis"…` / `UnsupportedOperationException (UnmodifiableMap.put)` | 往 `global` 上的 Java 只读 Map 写字段 | **不要**用 `global.ChunkProtector` 存可变数据；改**单文件闭包** `STATE`（本仓库已这样写） |
-| `loadClass Path FAIL: Class is not allowed by class filter!` | KubeJS **禁止** `Java.loadClass('java.nio.file.*')` | 用全局 **`JsonIO.read('kubejs/config/xxx.json')`**（实测返回 JS map），**无需 Path** |
-| `Utils.getKubeJS()` 不存在 | 2101 里脚本 `Utils` 是 `UtilsWrapper`，无该方法 | 读配置一律用 `JsonIO.read('路径')` |
-
-## 事件注册
-
-- 全局事件桥**不是 `ForgeEvents`**，而是 **`NativeEvents.onEvent('包.类$内部类', fn)`**（实测成功加载事件类）。
-- 放 置：`net.neoforged.neoforge.event.level.BlockEvent$EntityPlaceEvent` → 取消 `event.setCanceled(true)`。
-- 方块更新：`net.neoforged.neoforge.event.level.BlockEvent$NeighborNotifyEvent` → 取消同上。
-- 事件回调里拿 pos：`event.getPos()`；world：`event.getLevel()`；维度：`String(level.dimension().location())`。
-
-## 本地 server 复现要点（Windows）
-
-1. 用 NeoForge installer 生成 dev-server（见 `setup.md`）。
-2. `mods/` 只放 `kubejs-neoforge-*.jar` + `rhino-*.jar`（不要整套 modpack，脚本验证足够）。
-3. `cmd /c run.bat nogui` 启动；日志 `logs/kubejs/server.log`。
-4. 每次改脚本**重启** server 即可（`/reload` 也触发 `ServerEvents.loaded`，但重启最干净）。
+构建依赖 `dev-server/classpath.txt`。不要用完整客户端 modpack 直接启动 dedicated server；本地验证使用最小 NeoForge 服务端。

@@ -7,7 +7,11 @@ $cp = (Get-Content (Join-Path $serverDir 'classpath.txt') -Raw).Trim()
 
 if (Test-Path $testClasses) { Remove-Item $testClasses -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $testClasses | Out-Null
-javac -encoding UTF-8 -source 21 -target 21 -cp "$classes;$cp" -d $testClasses (Join-Path $PSScriptRoot 'FrozenRegionManagerRegression.java')
+javac -encoding UTF-8 -source 21 -target 21 -cp "$classes;$cp" -d $testClasses `
+    (Join-Path $PSScriptRoot 'FrozenRegionManagerRegression.java') `
+    (Join-Path $PSScriptRoot 'RegionConfigEditorRegression.java')
 if ($LASTEXITCODE -ne 0) { throw 'index regression compile failed' }
 java -cp "$testClasses;$classes;$cp" FrozenRegionManagerRegression
 if ($LASTEXITCODE -ne 0) { throw 'index regression failed' }
+java -cp "$testClasses;$classes;$cp" com.mcchunkprotector.RegionConfigEditorRegression
+if ($LASTEXITCODE -ne 0) { throw 'region editor regression failed' }

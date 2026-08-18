@@ -7,15 +7,22 @@ import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Loads the region file outside the block-update hot path.
@@ -30,10 +37,11 @@ public final class FrozenRegionManager {
     public static final String FREEZE_UPDATES = "freeze-updates";
 
     private static final int REFRESH_INTERVAL_TICKS = 40;
-    private static final int MAX_CONFIG_BYTES = 16 * 1024 * 1024;
+    static final int MAX_CONFIG_BYTES = 16 * 1024 * 1024;
     private static final int MAX_FENCES = 250_000;
-    private static final int MIN_CHUNK = Integer.MIN_VALUE >> 4;
-    private static final int MAX_CHUNK = Integer.MAX_VALUE >> 4;
+    private static final Gson GSON = new Gson();
+    public static final int MIN_CHUNK = Integer.MIN_VALUE >> 4;
+    public static final int MAX_CHUNK = Integer.MAX_VALUE >> 4;
 
     private final Path configPath;
     private volatile Snapshot snapshot = Snapshot.EMPTY;
@@ -72,7 +80,7 @@ public final class FrozenRegionManager {
     }
 
     /** Rebuilds the immutable snapshot only when the config file metadata changes. */
-    public void refresh() {
+    public synchronized void refresh() {
         try {
             if (!Files.exists(configPath)) {
                 if (lastSize != -1L || snapshot != Snapshot.EMPTY) {
@@ -95,8 +103,7 @@ public final class FrozenRegionManager {
             if (size == lastSize && modified.equals(lastModified)) return;
             if (size == failedSize && modified.equals(failedModified)) return;
 
-            String raw = Files.readString(configPath, StandardCharsets.UTF_8);
-            Snapshot parsed = parse(raw);
+            Snapshot parsed = parse(new String(readBounded(configPath), StandardCharsets.UTF_8));
             snapshot = parsed;
             lastSize = size;
             lastModified = modified;
@@ -114,6 +121,121 @@ public final class FrozenRegionManager {
         }
     }
 
+    /** Forces a synchronous reload for the OP command. Invalid input leaves the current snapshot active. */
+    public synchronized void reload() throws IOException {
+        if (!Files.exists(configPath)) {
+            snapshot = Snapshot.EMPTY;
+            lastSize = -1L;
+            lastModified = null;
+            return;
+        }
+        BasicFileAttributes attrs = Files.readAttributes(configPath, BasicFileAttributes.class);
+        if (attrs.size() > MAX_CONFIG_BYTES) {
+            throw new IllegalArgumentException("config exceeds " + MAX_CONFIG_BYTES + " bytes");
+        }
+        Snapshot parsed = parse(new String(readBounded(configPath), StandardCharsets.UTF_8));
+        install(parsed, attrs);
+    }
+
+    synchronized ConfigDocument readConfigDocument() throws IOException {
+        if (!Files.exists(configPath)) {
+            JsonObject root = new JsonObject();
+            root.addProperty("version", 1);
+            root.add("regions", new JsonArray());
+            return new ConfigDocument(root, null);
+        }
+        BasicFileAttributes attrs = Files.readAttributes(configPath, BasicFileAttributes.class);
+        if (attrs.size() > MAX_CONFIG_BYTES) {
+            throw new IllegalArgumentException("config exceeds " + MAX_CONFIG_BYTES + " bytes");
+        }
+        byte[] bytes = readBounded(configPath);
+        String raw = new String(bytes, StandardCharsets.UTF_8);
+        ParsedConfig parsed = parseConfig(raw);
+        return new ConfigDocument(parsed.root(), digest(bytes));
+    }
+
+    synchronized void replaceConfig(JsonObject root, byte[] expectedDigest) throws IOException {
+        String raw = new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root) + System.lineSeparator();
+        byte[] bytes = raw.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > MAX_CONFIG_BYTES) {
+            throw new IllegalArgumentException("config exceeds " + MAX_CONFIG_BYTES + " bytes");
+        }
+        Snapshot parsed = buildSnapshot(parseConfig(root));
+
+        Path parent = configPath.getParent();
+        if (parent == null) throw new IOException("config path has no parent");
+        Files.createDirectories(parent);
+        Path temporary = Files.createTempFile(parent, configPath.getFileName().toString(), ".tmp");
+        boolean committed = false;
+        try {
+            Files.write(temporary, bytes);
+            BasicFileAttributes temporaryAttributes = Files.readAttributes(temporary, BasicFileAttributes.class);
+            byte[] currentDigest = null;
+            if (Files.exists(configPath)) {
+                BasicFileAttributes current = Files.readAttributes(configPath, BasicFileAttributes.class);
+                if (current.size() > MAX_CONFIG_BYTES) {
+                    throw new IllegalArgumentException("config exceeds " + MAX_CONFIG_BYTES + " bytes");
+                }
+                currentDigest = digest(readBounded(configPath));
+            }
+            if (!Arrays.equals(expectedDigest, currentDigest)) {
+                throw new IllegalStateException("regions.json changed during edit; retry the command");
+            }
+            Files.move(temporary, configPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            install(parsed, temporaryAttributes);
+            committed = true;
+        } finally {
+            try {
+                Files.deleteIfExists(temporary);
+            } catch (IOException cleanupFailure) {
+                if (!committed) throw cleanupFailure;
+                ChunkProtectorMod.LOG.warn("[ChunkProtector] unable to delete committed temp file {}", temporary,
+                        cleanupFailure);
+            }
+        }
+    }
+
+    synchronized void ensureConfigUnchanged(byte[] expectedDigest) throws IOException {
+        byte[] currentDigest = null;
+        if (Files.exists(configPath)) {
+            BasicFileAttributes current = Files.readAttributes(configPath, BasicFileAttributes.class);
+            if (current.size() > MAX_CONFIG_BYTES) {
+                throw new IllegalArgumentException("config exceeds " + MAX_CONFIG_BYTES + " bytes");
+            }
+            currentDigest = digest(readBounded(configPath));
+        }
+        if (!Arrays.equals(expectedDigest, currentDigest)) {
+            throw new IllegalStateException("regions.json changed during edit; retry the command");
+        }
+    }
+
+    private static byte[] digest(byte[] bytes) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(bytes);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    private static byte[] readBounded(Path path) throws IOException {
+        try (InputStream input = Files.newInputStream(path)) {
+            byte[] bytes = input.readNBytes(MAX_CONFIG_BYTES + 1);
+            if (bytes.length > MAX_CONFIG_BYTES) {
+                throw new IllegalArgumentException("config exceeds " + MAX_CONFIG_BYTES + " bytes");
+            }
+            return bytes;
+        }
+    }
+
+    private void install(Snapshot parsed, BasicFileAttributes attrs) {
+        snapshot = parsed;
+        lastSize = attrs.size();
+        lastModified = attrs.lastModifiedTime();
+        failedSize = -1L;
+        failedModified = null;
+        ticksUntilRefresh = REFRESH_INTERVAL_TICKS;
+    }
+
     private void warnOnce(long size, FileTime modified, String reason) {
         if (size == failedSize && modified.equals(failedModified)) return;
         failedSize = size;
@@ -122,8 +244,17 @@ public final class FrozenRegionManager {
     }
 
     private static Snapshot parse(String raw) {
-        JsonObject root = new Gson().fromJson(raw, JsonObject.class);
-        if (root == null || !root.has("version") || root.get("version").getAsInt() != 1) {
+        return buildSnapshot(parseConfig(raw));
+    }
+
+    private static ParsedConfig parseConfig(String raw) {
+        return parseConfig(GSON.fromJson(raw, JsonObject.class));
+    }
+
+    private static ParsedConfig parseConfig(JsonObject root) {
+        if (root == null || !root.has("version") || !root.get("version").isJsonPrimitive()
+                || !root.get("version").getAsJsonPrimitive().isNumber()
+                || integerValue(root.get("version")) != 1) {
             throw new IllegalArgumentException("regions.json must have version 1");
         }
         if (!root.has("regions") || !root.get("regions").isJsonArray()) {
@@ -132,25 +263,25 @@ public final class FrozenRegionManager {
 
         Map<ResourceLocation, List<Fence>> place = new HashMap<>();
         Map<ResourceLocation, List<Fence>> freeze = new HashMap<>();
+        Set<String> regionIds = new HashSet<>();
         int fenceCount = 0;
         for (JsonElement element : root.getAsJsonArray("regions")) {
             if (!element.isJsonObject()) throw new IllegalArgumentException("region must be an object");
             JsonObject region = element.getAsJsonObject();
+            String id = requiredString(region, "id");
+            if (id.isEmpty()) throw new IllegalArgumentException("region id must not be empty");
+            if (!regionIds.add(id)) throw new IllegalArgumentException("duplicate region id: " + id);
+            if (requiredString(region, "name").isEmpty()) {
+                throw new IllegalArgumentException("region name must not be empty");
+            }
             if (!region.has("enabled") || !region.get("enabled").isJsonPrimitive()
                     || !region.get("enabled").getAsJsonPrimitive().isBoolean()) {
                 throw new IllegalArgumentException("region enabled must be boolean");
             }
-            if (!region.get("enabled").getAsBoolean()) continue;
-
-            if (!region.has("dimension") || !region.get("dimension").isJsonPrimitive()) {
-                throw new IllegalArgumentException("enabled region has no dimension");
-            }
-            ResourceLocation dimension = ResourceLocation.tryParse(region.get("dimension").getAsString());
+            boolean enabled = region.get("enabled").getAsBoolean();
+            ResourceLocation dimension = ResourceLocation.tryParse(requiredString(region, "dimension"));
             if (dimension == null) throw new IllegalArgumentException("invalid dimension");
-            if (!region.has("mode") || !region.get("mode").isJsonPrimitive()) {
-                throw new IllegalArgumentException("enabled region has no mode");
-            }
-            String mode = region.get("mode").getAsString();
+            String mode = requiredString(region, "mode");
             Map<ResourceLocation, List<Fence>> target;
             if (PLACE_BLOCK.equals(mode)) {
                 target = place;
@@ -163,7 +294,7 @@ public final class FrozenRegionManager {
             if (!region.has("chunkFences") || !region.get("chunkFences").isJsonArray()) {
                 throw new IllegalArgumentException("chunkFences must be an array");
             }
-            List<Fence> fences = target.computeIfAbsent(dimension, ignored -> new ArrayList<>());
+            List<Fence> fences = enabled ? target.computeIfAbsent(dimension, ignored -> new ArrayList<>()) : null;
             for (JsonElement fenceElement : region.getAsJsonArray("chunkFences")) {
                 if (!fenceElement.isJsonArray()) throw new IllegalArgumentException("fence must be an array");
                 JsonArray values = fenceElement.getAsJsonArray();
@@ -182,10 +313,23 @@ public final class FrozenRegionManager {
                 if (++fenceCount > MAX_FENCES) {
                     throw new IllegalArgumentException("too many fences");
                 }
-                fences.add(new Fence((int) minX, (int) minZ, (int) maxX, (int) maxZ));
+                if (enabled) fences.add(new Fence((int) minX, (int) minZ, (int) maxX, (int) maxZ));
             }
         }
-        return new Snapshot(buildIndexes(place), buildIndexes(freeze));
+        return new ParsedConfig(root, place, freeze);
+    }
+
+    private static Snapshot buildSnapshot(ParsedConfig parsed) {
+        IndexBudget budget = new IndexBudget();
+        return new Snapshot(buildIndexes(parsed.place(), budget), buildIndexes(parsed.freeze(), budget));
+    }
+
+    private static String requiredString(JsonObject object, String name) {
+        if (!object.has(name) || !object.get(name).isJsonPrimitive()
+                || !object.get(name).getAsJsonPrimitive().isString()) {
+            throw new IllegalArgumentException("region " + name + " must be a string");
+        }
+        return object.get(name).getAsString();
     }
 
     private static long integerValue(JsonElement value) {
@@ -199,10 +343,14 @@ public final class FrozenRegionManager {
         }
     }
 
-    private static Map<ResourceLocation, ChunkFenceIndex> buildIndexes(Map<ResourceLocation, List<Fence>> source) {
+    private static Map<ResourceLocation, ChunkFenceIndex> buildIndexes(Map<ResourceLocation, List<Fence>> source,
+                                                                        IndexBudget budget) {
         Map<ResourceLocation, ChunkFenceIndex> result = new HashMap<>();
         for (var entry : source.entrySet()) {
-            result.put(entry.getKey(), new ChunkFenceIndex(entry.getValue()));
+            if (!entry.getValue().isEmpty()) {
+                budget.addIndex();
+                result.put(entry.getKey(), new ChunkFenceIndex(entry.getValue(), budget));
+            }
         }
         return Map.copyOf(result);
     }
@@ -221,6 +369,16 @@ public final class FrozenRegionManager {
 
     public int frozenFenceCount(ResourceLocation dimension) {
         ChunkFenceIndex index = snapshot.freeze().get(dimension);
+        return index == null ? 0 : index.fenceCount();
+    }
+
+    public int fenceCount(ResourceLocation dimension, String mode) {
+        Map<ResourceLocation, ChunkFenceIndex> indexes = switch (mode) {
+            case PLACE_BLOCK -> snapshot.place();
+            case FREEZE_UPDATES -> snapshot.freeze();
+            default -> throw new IllegalArgumentException("unknown mode: " + mode);
+        };
+        ChunkFenceIndex index = indexes.get(dimension);
         return index == null ? 0 : index.fenceCount();
     }
 
@@ -246,15 +404,13 @@ public final class FrozenRegionManager {
     private static final class ChunkFenceIndex {
         private static final int BUCKET_SHIFT = 8;
         private static final int MAX_BUCKET_REFERENCES = 4096;
-        private static final int MAX_INDEX_BUCKETS = 1_000_000;
         private static final int MAX_CANDIDATES_PER_BUCKET = 1024;
-        private static final int MAX_BROAD_FENCES = 64;
 
         private final BucketMap buckets;
         private final Fence[] broad;
         private final int fenceCount;
 
-        private ChunkFenceIndex(List<Fence> fences) {
+        private ChunkFenceIndex(List<Fence> fences, IndexBudget budget) {
             this.fenceCount = fences.size();
             Map<Long, List<Fence>> bucketLists = new HashMap<>();
             List<Fence> broadFences = new ArrayList<>();
@@ -265,28 +421,30 @@ public final class FrozenRegionManager {
                 long maxBucketZ = fence.maxZ() >> BUCKET_SHIFT;
                 long bucketCount = (maxBucketX - minBucketX + 1) * (maxBucketZ - minBucketZ + 1);
                 if (bucketCount > MAX_BUCKET_REFERENCES) {
+                    budget.addBroadFence();
                     broadFences.add(fence);
                     continue;
                 }
                 for (long bx = minBucketX; bx <= maxBucketX; bx++) {
                     for (long bz = minBucketZ; bz <= maxBucketZ; bz++) {
                         long key = pack((int) bx, (int) bz);
-                        bucketLists.computeIfAbsent(key, ignored -> new ArrayList<>()).add(fence);
-                        if (bucketLists.size() > MAX_INDEX_BUCKETS) {
-                            throw new IllegalArgumentException("too many spatial buckets");
+                        List<Fence> candidates = bucketLists.get(key);
+                        if (candidates == null) {
+                            budget.addBucket();
+                            candidates = new ArrayList<>();
+                            bucketLists.put(key, candidates);
                         }
+                        if (candidates.size() >= MAX_CANDIDATES_PER_BUCKET) {
+                            throw new IllegalArgumentException("too many overlapping fences in one spatial bucket");
+                        }
+                        budget.addReference();
+                        candidates.add(fence);
                     }
                 }
             }
             Map<Long, Fence[]> compactBuckets = new HashMap<>(bucketLists.size());
             for (var entry : bucketLists.entrySet()) {
-                if (entry.getValue().size() > MAX_CANDIDATES_PER_BUCKET) {
-                    throw new IllegalArgumentException("too many overlapping fences in one spatial bucket");
-                }
                 compactBuckets.put(entry.getKey(), entry.getValue().toArray(Fence[]::new));
-            }
-            if (broadFences.size() > MAX_BROAD_FENCES) {
-                throw new IllegalArgumentException("too many world-spanning fences");
             }
             this.buckets = new BucketMap(compactBuckets);
             this.broad = broadFences.toArray(Fence[]::new);
@@ -352,4 +510,41 @@ public final class FrozenRegionManager {
             }
         }
     }
+
+    private static final class IndexBudget {
+        private static final int MAX_INDEXES = 4_096;
+        private static final int MAX_BUCKETS = 262_144;
+        private static final int MAX_REFERENCES = 2_000_000;
+        private static final int MAX_BROAD_FENCES = 64;
+
+        private int indexes;
+        private int buckets;
+        private int references;
+        private int broadFences;
+
+        private void addIndex() {
+            if (++indexes > MAX_INDEXES) throw new IllegalArgumentException("too many dimension indexes");
+        }
+
+        private void addBucket() {
+            if (++buckets > MAX_BUCKETS) throw new IllegalArgumentException("too many spatial buckets");
+        }
+
+        private void addReference() {
+            if (++references > MAX_REFERENCES) {
+                throw new IllegalArgumentException("too many spatial bucket references");
+            }
+        }
+
+        private void addBroadFence() {
+            if (++broadFences > MAX_BROAD_FENCES) {
+                throw new IllegalArgumentException("too many world-spanning fences");
+            }
+        }
+    }
+
+    record ConfigDocument(JsonObject root, byte[] digest) {}
+
+    private record ParsedConfig(JsonObject root, Map<ResourceLocation, List<Fence>> place,
+                                Map<ResourceLocation, List<Fence>> freeze) {}
 }
