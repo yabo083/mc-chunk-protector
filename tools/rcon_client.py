@@ -24,14 +24,21 @@ def read_pkt(s):
     elif body.endswith(b'\x00'): body = body[:-1]
     return rid, typ, body.decode('utf-8', 'replace')
 
-s = socket.create_connection((HOST, PORT), timeout=8)
-s.sendall(make_pkt(1, 3, PWD))
-rid, typ, body = read_pkt(s)
-print("auth: rid=%s typ=%s body=%r" % (rid, typ, body))
-for cmd in sys.argv[1:]:
-    s.sendall(make_pkt(2, 2, cmd))
-    rid, typ, body = read_pkt(s)
-    print("RCON>", cmd)
-    print(body)
-s.close()
+def execute(commands):
+    responses = []
+    with socket.create_connection((HOST, PORT), timeout=8) as s:
+        s.sendall(make_pkt(1, 3, PWD))
+        rid, _, _ = read_pkt(s)
+        if rid == -1:
+            raise RuntimeError("RCON authentication failed")
+        for cmd in commands:
+            s.sendall(make_pkt(2, 2, cmd))
+            _, _, body = read_pkt(s)
+            responses.append((cmd, body))
+    return responses
 
+
+if __name__ == "__main__":
+    for cmd, body in execute(sys.argv[1:]):
+        print("RCON>", cmd)
+        print(body)

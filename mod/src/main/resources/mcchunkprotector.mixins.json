@@ -7,7 +7,7 @@
     "LevelUpdateNeighborsMixin",
     "ServerLevelUpdateNeighborsMixin",
     "LevelNeighborChangedMixin",
-    "FenceBlockPlacementMixin"
+    "LevelNeighborShapeChangedMixin"
   ],
   "injectors": {
     "maxShiftBy": 0

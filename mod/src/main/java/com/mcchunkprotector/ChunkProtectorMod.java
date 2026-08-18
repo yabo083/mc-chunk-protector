@@ -7,6 +7,8 @@ import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerAboutToStartEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,16 +43,22 @@ public class ChunkProtectorMod {
         LOG.info("[ChunkProtector] init, config={}", cfg);
     }
 
+    @SubscribeEvent
+    public void onServerTick(ServerTickEvent.Post event) {
+        var mgr = FrozenRegionManager.get();
+        if (mgr != null) mgr.tick();
+    }
+
     /** 模式 A：防放置（EntityPlaceEvent，放置前可取消）。 */
     @SubscribeEvent
     public void onBlockPlace(BlockEvent.EntityPlaceEvent event) {
         var mgr = FrozenRegionManager.get();
         if (mgr == null) return;
         var pos = event.getPos();
-        long cx = FrozenRegionManager.chunkOf(pos.getX());
-        long cz = FrozenRegionManager.chunkOf(pos.getZ());
+        int cx = FrozenRegionManager.chunkOf(pos.getX());
+        int cz = FrozenRegionManager.chunkOf(pos.getZ());
         if (event.getLevel() instanceof Level lv) {
-            String dim = lv.dimension().location().toString();
+            ResourceLocation dim = lv.dimension().location();
             if (mgr.isPlaceBlocked(dim, cx, cz)) {
                 event.setCanceled(true);
             }

@@ -5,6 +5,8 @@ dist/
 publish/
 tools/**/bin/
 tools/**/obj/
+tools/test-classes/
+tools/**/__pycache__/
 
 # GUI local
 gui/**/.vs/
@@ -21,6 +23,7 @@ dev-server/*.jar
 dev-server/classpath.txt
 dev-server/_scratch/
 *.log
+/logs/
 
 # Mod build outputs
 mod/build/
@@ -28,6 +31,8 @@ mod/build/
 # IDE
 .vs/
 .idea/
+.codegraph/
+.cursor/
 *.user
 
 # OS

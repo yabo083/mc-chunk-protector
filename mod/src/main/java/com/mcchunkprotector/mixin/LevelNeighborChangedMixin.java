@@ -1,6 +1,5 @@
 package com.mcchunkprotector.mixin;
 
-import com.mcchunkprotector.ChunkProtectorMod;
 import com.mcchunkprotector.FrozenRegionManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
@@ -30,11 +29,10 @@ public class LevelNeighborChangedMixin {
         var mgr = FrozenRegionManager.get();
         if (mgr == null) return;
         var self = (Level) (Object) this;
-        String dim = self.dimension().location().toString();
-        long cx = FrozenRegionManager.chunkOf(pos.getX());
-        long cz = FrozenRegionManager.chunkOf(pos.getZ());
+        var dim = self.dimension().location();
+        int cx = FrozenRegionManager.chunkOf(pos.getX());
+        int cz = FrozenRegionManager.chunkOf(pos.getZ());
         if (mgr.isFrozen(dim, cx, cz)) {
-            ChunkProtectorMod.LOG.info("[ChunkProtector][freeze] Level.neighborChanged suppressed at block({},{}) chunk({},{}) dim={}", pos.getX(), pos.getZ(), cx, cz, dim);
             ci.cancel();
         }
     }

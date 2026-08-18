@@ -74,10 +74,11 @@ public final class InspectCommand {
         var stack = new ItemStack(block.asItem());
         var bhr = new BlockHitResult(Vec3.atCenterOf(pos), net.minecraft.core.Direction.UP, pos, false);
         var placementCtx = new OpenPlacementContext(level, null, InteractionHand.MAIN_HAND, stack, bhr);
-        long cx = FrozenRegionManager.chunkOf(x);
-        long cz = FrozenRegionManager.chunkOf(z);
-        String dim = level.dimension().location().toString();
-        boolean frozen = FrozenRegionManager.get().isFrozen(dim, cx, cz);
+        int cx = FrozenRegionManager.chunkOf(x);
+        int cz = FrozenRegionManager.chunkOf(z);
+        var dim = level.dimension().location();
+        var manager = FrozenRegionManager.get();
+        boolean frozen = manager != null && manager.isFrozen(dim, cx, cz);
         BlockState placed;
         try {
             placed = block.getStateForPlacement(placementCtx);
@@ -96,10 +97,11 @@ public final class InspectCommand {
         var pos = new BlockPos(x, y, z);
         var state = level.getBlockState(pos);
         var block = level.getBlockState(pos).getBlock();
-        long cx = FrozenRegionManager.chunkOf(x);
-        long cz = FrozenRegionManager.chunkOf(z);
-        String dim = level.dimension().location().toString();
-        boolean frozen = FrozenRegionManager.get().isFrozen(dim, cx, cz);
+        int cx = FrozenRegionManager.chunkOf(x);
+        int cz = FrozenRegionManager.chunkOf(z);
+        var dim = level.dimension().location();
+        var manager = FrozenRegionManager.get();
+        boolean frozen = manager != null && manager.isFrozen(dim, cx, cz);
         ChunkProtectorMod.LOG.info("[ChunkProtector][inspect] block ({},{},{}) dim={} chunk({},{}) frozen={} state={}",
                 x, y, z, dim, cx, cz, frozen, state);
         src.sendSuccess(() -> net.minecraft.network.chat.Component.literal(

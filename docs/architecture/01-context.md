@@ -7,7 +7,7 @@ MC Chunk Protector 的系统边界与外部依赖。**本文只画边界与接�
 运行在 Minecraft NeoForge 服务端上的「**区块保护工具**」：允许服务器管理员（OP）对**服务器的任意区块范围**施加两类保护——
 
 - **模式 A — 区块锁定（防放置）**：该区域内的玩家无法放置方块（类似出生点保护），但可正常破坏/与方块交互。
-- **模式 B — 区块冻结（防更新）**：可以放置方块，但该区域内的**任何方块更新（block/neighbor update）被抑制**（用于保护红石机械、区块内关键装置不被破坏性更新扰动，或锁定已完成的建筑状态）。
+- **模式 B — 区块冻结（防邻居/形状更新）**：可以放置方块，放置时由调用方计算出的初始 `BlockState` 保留；写入后的邻居通知和形状重算不会改写冻结区块内已有方块。scheduled/random/fluid/block-entity tick 不在本模式契约内。
 
 管理通过**外置桌面 GUI** 完成，不依赖游戏内命令（管理端无需进游戏）。
 
@@ -15,9 +15,9 @@ MC Chunk Protector 的系统边界与外部依赖。**本文只画边界与接�
 
 | 实体 | 方向 | 接口/协议 | 说明 |
 |---|---|---|---|
-| **NeoForge 服务端** | 宿主 | — | MC 1.21.1 + NeoForge 21.1.219，运行 KubeJS |
-| **KubeJS** | 内置扩展点 | KubeJS 脚本 + Forge 事件桥 | 提供放置拦截 / 方块更新拦截的钩子 |
-| **配置文件 `kubejs/config/regions.json`** | GUI ⇄ KubeJS | JSON 文件热重载 | GUI 写、KubeJS 读；契约见 `config-schema/` |
+| **NeoForge 服务端** | 宿主 | — | MC 1.21.1 + NeoForge 21.1.219，运行服务端 mod 与 KubeJS |
+| **mcchunkprotector mod** | 内置扩展点 | NeoForge 事件 + Mixin | 提供放置拦截、邻居通知和形状更新拦截 |
+| **配置文件 `kubejs/config/regions.json`** | GUI ⇄ mod | JSON 文件热重载 | GUI 写、mod 读；契约见 `config-schema/` |
 | **Xaero World Map 数据** | 只读输入 → GUI | 读 `xaero/world-map/.../*.zip` 内 `region.xaero` | GUI 地图底图来源，随探图增长 |
 | **C# WPF GUI** | 管理终端 | 本地进程 + 文件 IO | 地图渲染、选区编辑、配置写出 |
 | **MC 玩家** | 被保护对象 | 游戏内互动 | 受模式 A/B 约束 |
@@ -28,9 +28,9 @@ MC Chunk Protector 的系统边界与外部依赖。**本文只画边界与接�
 - 不做**多服务器集中管理**（只服务本机这一个服务器实例）。
 - 不做**权限粒度到玩家/角色**的第一版（先整区域生效；ADRD 记录后续演进）。
 - 不做**跨维度混用**（选区按维度独立）。
-- 不修改 MC 核心/任何第三方 mod 源码，全部能力来自 KubeJS。
+- 不修改 MC 核心/任何第三方 mod 源码；能力来自服务端 mod 的 Mixin 与 NeoForge 事件。
 
 ## 关键约束（从 §2 摘要）
 
-- **性能红线**：百万区块级服务器地图，一切判定 O(1)，渲染走 LOD 惰性加载。
+- **性能红线**：百万区块级服务器地图，判定不按保护区面积扩展；热路径无磁盘 IO、JSON 解析和查询装箱，渲染走 LOD 惰性加载。配置每 40 server ticks 做一次文件元数据检查。
 - **可复现**：`kubejs-scripts/` 可在任意新鲜 NeoForge 服务器复制即用。

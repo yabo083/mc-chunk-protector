@@ -1,6 +1,6 @@
 # 数据字典（schema）
 
-## regions.json（GUI 写出 / KubeJS 读取）
+## regions.json（GUI 写出 / 服务端 mod 读取）
 
 路径：`<server>/kubejs/config/regions.json`。
 权威 JSON Schema：`config-schema/regions.schema.json`。
@@ -12,7 +12,7 @@
 | `regions[].id` | string | 稳定唯一 id（GUI 生成 UUID）。 |
 | `regions[].name` | string | 显示名。 |
 | `regions[].dimension` | string | 维度资源名，`minecraft:overworld` / `the_nether` / `the_end`。 |
-| `regions[].mode` | `place-block` \| `freeze-updates` | **A 防放置** / **B 防更新**。 |
+| `regions[].mode` | `place-block` \| `freeze-updates` | **A 防放置** / **B 防邻居与形状更新**；B 接受初始 `BlockState`，不冻结 scheduled/random/fluid/block-entity tick。 |
 | `regions[].enabled` | bool | `false` 时保留但暂停。 |
 | `regions[].chunkFences` | `[[minX,minZ,maxX,maxZ],…]` | 区块矩形（闭区间），矩形取并集。坐标为**区块坐标**。 |
 

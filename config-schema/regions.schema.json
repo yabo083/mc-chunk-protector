@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.local/mc-chunk-protector/regions.schema.json",
   "title": "MC Chunk Protector 保护区域配置",
-  "description": "GUI 写出、KubeJS 定时读取的服务端区块保护配置文件。路径：<server>/kubejs/config/regions.json",
+  "description": "GUI 写出、服务端 mod 定时读取的区块保护配置文件。路径：<server>/kubejs/config/regions.json",
   "type": "object",
   "required": ["version", "regions"],
   "properties": {
@@ -49,7 +49,7 @@
         "mode": {
           "type": "string",
           "enum": ["place-block", "freeze-updates"],
-          "description": "place-block=防放置(模式A)；freeze-updates=允许放置但抑制一切方块更新(模式B)"
+          "description": "place-block=防放置(模式A)；freeze-updates=允许放置但抑制写入后的邻居通知和形状更新(模式B)，初始 BlockState 保留"
         },
         "enabled": {
           "type": "boolean",

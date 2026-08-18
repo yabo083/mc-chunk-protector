@@ -1,6 +1,5 @@
 package com.mcchunkprotector.mixin;
 
-import com.mcchunkprotector.ChunkProtectorMod;
 import com.mcchunkprotector.FrozenRegionManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -22,11 +21,10 @@ public class ServerLevelUpdateNeighborsMixin {
         var mgr = FrozenRegionManager.get();
         if (mgr == null) return;
         var self = (ServerLevel) (Object) this;
-        String dim = self.dimension().location().toString();
-        long cx = FrozenRegionManager.chunkOf(pos.getX());
-        long cz = FrozenRegionManager.chunkOf(pos.getZ());
+        var dim = self.dimension().location();
+        int cx = FrozenRegionManager.chunkOf(pos.getX());
+        int cz = FrozenRegionManager.chunkOf(pos.getZ());
         if (mgr.isFrozen(dim, cx, cz)) {
-            ChunkProtectorMod.LOG.info("[ChunkProtector][freeze] ServerLevel.updateNeighborsAt short-circuited at block({},{}) dim={} chunk({},{})", pos.getX(), pos.getZ(), dim, cx, cz);
             ci.cancel();
         }
     }
